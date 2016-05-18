@@ -3,9 +3,9 @@
 
 #include <bitset>
 
-/**
- * nal_unit_type的值的枚举类型
- */
+//
+// nal_unit_type的值的枚举类型
+//
 enum NalUnitType {
 	NAL_SLICE			=	1,	///< 条带类型
 	NAL_DPA				=	2,	///< slice_data_partition_a_layer_rbsp, 编码条带数据分区A
@@ -24,35 +24,161 @@ enum NalUnitType {
 	NAL_FF_IGNORE		=	0xff0f001
 };
 
-/**
- * 图(帧)的类型
- */
-enum PictureType {
-	PICTURE_TYPE_NONE	=	0,	///< 未定义的图片类型
-	PICTURE_TYPE_I,				///< I帧(Intra)
-	PICTURE_TYPE_P,				///< P帧(Predicted)
-	PICTURE_TYPE_B,				///< B帧(Bi-dir predicted)
-	PICTURE_TYPE_SI,			///< SI帧(Switching Intra)
-	PICTURE_TYPE_SP				///< SP帧(Switching Predicted)
+//
+// slice_type的类型
+//
+enum SliceType {
+	SLICE_TYPE_P1	=	0,
+	SLICE_TYPE_B1	=	1,
+	SLICE_TYPE_I1	=	2,
+	SLICE_TYPE_SP1	=	3,
+	SLICE_TYPE_SI1	=	4,
+	SLICE_TYPE_P2	=	5,
+	SLICE_TYPE_B2	=	6,
+	SLICE_TYPE_I2	=	7,
+	SLICE_TYPE_SP2	=	8,
+	SLICE_TYPE_SI2	=	9
 };
 
+typedef int STATUS;	// 返回状态 ( 0 => Failed, 1 => Success)
 
-/**
- * 获取对应的比特位数(小端对齐)
- */
-enum {
-	B_1_BIT	=	0x01,
-	B_2_BIT	=	0x03,
-	B_3_BIT	=	0x07,
-	B_4_BIT	=	0x0f,
-	B_5_BIT	=	0x1f,
-	B_6_BIT	=	0x3f,
-	B_7_BIT	=	0x7f,
-	B_8_BIT	=	0xff
-};
+//
+// 字节位颠倒(如: 0011 0001 => 1000 1100)
+// 
+unsigned char bits_reverse(unsigned char data);
+
+//
+// 多字节位颠倒(如: 0011 0001 0111 1111 => 1111 1110 1000 1100)
+// 
+char* bits_reverse(char *data, int len);
+
+//
+// 按字节对齐返回字节数
+//
+extern int bits_get_byte_num(int len);
+
+//
+// 将c以二进制形式输出, 格式为从右到左(最低位到最高位)
+//
+extern void bits_binary_printf(char c);
+
+//
+// 将data以二进制形式输出, 格式为从右到左(最低位到最高位)
+//
+extern void bits_binary_printf(char *data, int len);
+
+//
+// 将data以十六进制形式输出, 小端存储的方式
+//
+extern void bytes_hex_printf(char *data, int len);
+
+//
+// 获取截取字节第pos位起, 长度为len位的字节掩码
+//
+extern const char B8_VAL_MASK(unsigned int pos, unsigned int len);
+
+//
+// 获取截取四字节第pos位起, 长度为n位的字节掩码
+//
+extern const UINT32 B32_VAL_MASK(unsigned int pos, unsigned int len);
+
+//
+// 获取截取字节第pos位开始到结束的字节掩码
+//
+extern const char B8_VAL_MASK(unsigned int pos);
+
+//
+// 获取截取四字节第pos位开始到结束的字节掩码
+//
+extern const UINT32 B32_VAL_MASK(unsigned int pos);
+
+//
+// 获取截取字节val第pos位起到结束的值，并右移至右边第一位非0
+//
+extern const char B8_VAL_BASE_R(unsigned char val, unsigned int pos);
+
+//
+// 获取截取四字节val第pos位起到结束的值，并右移至右边第一位非0
+//
+extern const UINT32 B32_VAL_BASE_R(UINT32 val, unsigned int pos);
+
+//
+// 获取截取字节val第pos位起, 长度为n位的字节并右移至右边第一位非0
+//
+extern const char B8_VAL_BASE_R(unsigned char val, unsigned int pos, unsigned int len);
+
+//
+// 获取截取四字节val第pos位起, 长度为n位的字节并右移至右边第一位非0
+//
+extern const UINT32 B32_VAL_BASE_R(UINT32 val, unsigned int pos, unsigned int len);
+
+//
+// 获取截取字节val第pos位起到结束的值，并左移至左边第一位非0
+//
+extern const char B8_VAL_BASE_L(unsigned char val, unsigned int pos);
+
+//
+// 获取截取四字节val第pos位起到结束的值，并左移至左边第一位非0
+//
+extern const UINT32 B32_VAL_BASE_L(UINT32 val, unsigned int pos);
+
+//
+// 获取截取字节val第pos位起, 长度为n位的字节并左移至左边第一位非0
+//
+extern const char B8_VAL_BASE_L(unsigned char val, unsigned int pos, unsigned int len);
+
+//
+// 获取截取四字节val第pos位起, 长度为n位的字节并左移至左边第一位非0
+//
+extern const UINT32 B32_VAL_BASE_L(UINT32 val, unsigned int pos, unsigned int len);
+
+//
+// 字节val从pos位开始的len位清零(从左往右数)
+//
+extern const char B8_VAL_ZERO(unsigned char val, unsigned int pos, unsigned int len);
+
+//
+// 四字节val从pos位开始的len位清零(从左往右数)
+//
+extern const UINT32 B32_VAL_ZERO(UINT32 val, unsigned int pos, unsigned int len);
+
+//
+// 字节val从pos位开始的len位置一(从左往右数)
+//
+extern const char B8_VAL_ONE(unsigned char val, unsigned int pos, unsigned int len);
+
+//
+// 四字节val从pos位开始的len位置一(从左往右数)
+//
+extern const UINT32 B32_VAL_ONE(UINT32 val, unsigned int pos, unsigned int len);
+
+//
+// 从字节srcVal中截取srcPos开始的len位数据填充到字节dstVal中从dstPos开始的len位(从左往右数)
+//
+extern const char B8_VAL_FILL(unsigned char srcVal, unsigned int srcPos, unsigned char dstVal, unsigned int dstPos, unsigned int len);
+
+//
+// 从四字节srcVal中截取srcPos开始的len位数据填充到四字节dstVal中从dstPos开始的len位(从左往右数)
+//
+extern const UINT32 B32_VAL_FILL(UINT32 srcVal, unsigned int srcPos, UINT32 dstVal, unsigned int dstPos, unsigned int len);
+
+//
+// 字节颠倒(如: 0011 0001 0111 1111 => 1111 0111 0001 0011)
+//
+extern char* bytes_reverse(char *data, int len);
 
 
-extern void bytes_updown(char* beg, int n);
-extern int bits_get_byte_num(int n);
+
+//
+// SPS结构
+// 
+typedef struct tagSPS
+{
+	unsigned char profile_idc;
+	bool constraint_set0_flag;
+	/**
+	 * 未完成
+	 */
+}SPS, *PSPS;
 
 #endif
