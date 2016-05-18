@@ -109,7 +109,7 @@ void H264AnalysisDebug()
 		}
 	}
 	cout << "------------------------------" << endl;
-	cout << left << setprecision(4);
+	cout << left << setprecision(6) <<  setiosflags(ios::fixed);
 	cout << setw(10) << "Category" << setw(10) << "Number" << setw(10) << "Size(MB)" << endl;
 	cout << "------------------------------" << endl;
 	cout << setw(10) << "NALU" << setw(10) << NaluCount << setw(10) << (float)NaluTotalSize/1024/1024 << endl;
