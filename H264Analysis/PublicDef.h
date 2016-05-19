@@ -42,6 +42,31 @@ enum SliceType {
 
 typedef int STATUS;	// 返回状态 ( 0 => Failed, 1 => Success)
 
+
+//
+// 流结构
+// 
+typedef struct { 
+	char *buf;			///< 流数据缓存区
+	unsigned int len;	///< 流数据长度
+	char *ptr;			///< 流数据指针
+	char binPos;		///< 二进制指针的位置, 始终指向要读的下一位(8位, 从0开始, 值为0~7)
+	UINT8 lastByte;		///< 最后一次读的字节内容
+} DataStream, *PDataStream;	
+
+//
+// SPS结构
+// 
+typedef struct {
+	unsigned char profile_idc;
+	bool constraint_set0_flag;
+	/**
+	 * 未完成
+	 */
+}SPS, *PSPS;
+
+
+
 //
 // 字节位颠倒(如: 0011 0001 => 1000 1100)
 // 
@@ -166,19 +191,5 @@ extern const UINT32 B32_VAL_FILL(UINT32 srcVal, unsigned int srcPos, UINT32 dstV
 // 字节颠倒(如: 0011 0001 0111 1111 => 1111 0111 0001 0011)
 //
 extern char* bytes_reverse(char *data, int len);
-
-
-
-//
-// SPS结构
-// 
-typedef struct tagSPS
-{
-	unsigned char profile_idc;
-	bool constraint_set0_flag;
-	/**
-	 * 未完成
-	 */
-}SPS, *PSPS;
 
 #endif

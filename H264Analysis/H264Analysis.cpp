@@ -2,62 +2,89 @@
 
 H264Analysis::H264Analysis(void)
 {
-	/// 初始化二进制指针
-	m_lastByte = 0;
-	m_binCurPos = 0;
+	/// 初始化流结构
+	m_stream = new DataStream();
+	m_stream->buf = NULL;
+	m_stream->len = 0;
+	m_stream->ptr = NULL;
+	m_stream->lastByte = 0;
+	m_stream->binPos = 0;
 }
 
 
 H264Analysis::~H264Analysis(void)
 {
-	if (m_iFileStream.is_open())
-		m_iFileStream.close();
+	clearStream();
+	delete m_stream;
+	m_stream = NULL;
 }
 
 
 //************************************
 // 函数名:	H264Analysis::getOpenFile
 // 描述:	获取并打开文件
-// 返回值:	std::ifstream&
+// 返回值:	DataStream *
 // 参数: 	const string & fileName
 // 日期: 	2016/05/18
 // 作者: 	YJZ
 // 修改记录:
 //************************************
-std::ifstream& H264Analysis::getOpenFile( const string &fileName )
+DataStream* H264Analysis::getStream( const string &fileName )
 {
-	/// 初始化二进制指针
-	m_lastByte = 0;
-	m_binCurPos = 0;
+	/// 初始化流结构
+	if (m_stream->buf)
+		delete [] m_stream->buf;
+	m_stream->buf = NULL;
+	m_stream->len = 0;
+	m_stream->ptr = NULL;
+	m_stream->lastByte = 0;
+	m_stream->binPos = 0;
 
-	if (!m_iFileStream.is_open())
-		m_iFileStream.open(fileName.c_str(), ios_base::binary);
+	/// 文件流数据存放到流结构中
+	ifstream fileStream(fileName.c_str(), ios_base::binary);
+	fileStream.seekg(0, ios_base::end);
+	m_stream->len = fileStream.tellg();
+	m_stream->buf = new char [m_stream->len];
+	fileStream.seekg(ios_base::beg);
+	streambuf *sb = fileStream.rdbuf();
+	sb->sgetn(m_stream->buf, m_stream->len);
+	m_stream->ptr = m_stream->buf;
+	fileStream.close();
 
-	return m_iFileStream;
+	return m_stream;
 }
 
 
+
 //************************************
-// 函数名:	H264Analysis::closeFile
-// 描述:	关闭文件
+// 函数名:	H264Analysis::clearStream
+// 描述:	清空流数据
 // 返回值:	void
-// 日期: 	2016/05/17
+// 日期: 	2016/05/19
 // 作者: 	YJZ
 // 修改记录:
 //************************************
-void H264Analysis::closeFile()
+void H264Analysis::clearStream()
 {
-	if (m_iFileStream.is_open())
+	if (m_stream)
 	{
-		m_iFileStream.close();
-	}
-	return ;
-}
+		if (m_stream->buf)
+		{
+			delete [] m_stream->buf;
+			m_stream->buf = NULL;
+		}
 
+		m_stream->buf = NULL;
+		m_stream->len = 0;
+		m_stream->ptr = NULL;
+		m_stream->binPos = 0;
+		m_stream->lastByte = 0;
+	}
+}
 
 //************************************
 // 函数名:	H264Analysis::readNaluData
-// 描述:	读取Nalu数据部分（不包括startCode）并跳过startCode，完成后文件指针指向Nalu的数据部分开头
+// 描述:	跳过startCode并读取Nalu数据部分（不包括startCode），完成后数据流指针指向Nalu的数据部分开头
 // 返回值:	size_t => Nalu数据部分长度
 // 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 // 日期: 	2016/05/17
@@ -67,36 +94,40 @@ void H264Analysis::closeFile()
 size_t H264Analysis::readNaluData( char **naluData )
 {
 	// 获取当前的Nalu位置(包含startCode)
-	int curNaluPos = m_iFileStream.tellg();
+	int curNaluPos = m_stream->ptr - m_stream->buf;
 	int len = 0;
-	
+
 	// 定位到跳过startCode位置
 	int startCodeLen = skipNaluStartCode();
 
 	// 获取Nalu数据部分的位置
 	int curNaluDataPos = curNaluPos + startCodeLen;
-	
+
 	// 获取下一Nalu的位置(包含startCode)
 	int nextNaluPos = 0;
-	if (nextNalu(&nextNaluPos) == Failed)
-		return Failed;
+	if (nextNalu(&nextNaluPos) == FileEnd)
+	{
+		// 已到文件结尾
+		nextNaluPos = m_stream->len;
+	}
 
 	// 回到原来Nalu数据部分的位置
-	m_iFileStream.seekg(curNaluDataPos);
+	m_stream->ptr = m_stream->buf + curNaluDataPos;
 
 	// 读取Nalu的数据部分
 	len = nextNaluPos - curNaluDataPos; // Nalu长度
-	if (naluData && readNextBytes(naluData, len) == Failed)
-		return Failed;
-	m_iFileStream.seekg(curNaluDataPos);	// 回到原来的Nalu位置(跳过startCode)
-
+	
 	// 置位二进制指针标记
 	if (naluData)
 	{
-		m_binCurPos = 0;
-		m_lastByte = (*naluData)[0];
+		if (readNextBytes(naluData, len) == Failed)
+			throw exception();
+		m_stream->binPos = 0;
+		m_stream->lastByte = (*naluData)[0];
 	}
-	
+
+	m_stream->ptr = m_stream->buf + curNaluDataPos; // 回到原来的Nalu数据部分位置(跳过startCode)
+
 	return len;
 }
 
@@ -133,19 +164,19 @@ STATUS H264Analysis::nextNalu(int *naluPos)
 		}
 	}
 
-	int curNaluDataPos = m_iFileStream.tellg();
+	int curNaluDataPos = m_stream->ptr - m_stream->buf;
 	int curNaluPos = curNaluDataPos - i;
-	m_iFileStream.seekg(curNaluPos);
+	m_stream->ptr = m_stream->buf + curNaluPos;
 	if (naluPos)
 		*naluPos = curNaluPos;
-	
+
 	return Success;
 }
 
 
 //************************************
 // 函数名:	H264Analysis::next_SPS_Nalu
-// 描述:	获取下一个包含SPS的Nalu, 并将数据放入参数Nalu传出，完成后文件指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
+// 描述:	获取下一个包含SPS的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
 // 返回值:	size_t => NALU数据部分长度
 // 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 // 日期: 	2016/05/17
@@ -162,14 +193,14 @@ size_t H264Analysis::next_SPS_Nalu( char **naluData )
 	while (nextNalu())
 	{
 		startCodeLen = skipNaluStartCode();	///< 跳过startCode
-		curNaluDataPos = m_iFileStream.tellg();	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
+		curNaluDataPos = m_stream->ptr - m_stream->buf;	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
 		curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
 		if (readNextByte((char*)&nextByte) == Failed)
 			return Failed;
 		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
 		if (nal_unit_type == NAL_SPS)
 		{
-			m_iFileStream.seekg(curNaluPos);
+			m_stream->ptr = m_stream->buf + curNaluPos;
 			return readNaluData(naluData);
 		}
 	}
@@ -178,7 +209,7 @@ size_t H264Analysis::next_SPS_Nalu( char **naluData )
 
 //************************************
 // 函数名:	H264Analysis::next_PPS_Nalu
-// 描述:	获取下一个包含PPS的Nalu, 并将数据放入参数Nalu传出，完成后文件指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
+// 描述:	获取下一个包含PPS的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
 // 返回值:	size_t => NALU数据部分长度
 // 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 // 日期: 	2016/05/17
@@ -195,14 +226,14 @@ size_t H264Analysis::next_PPS_Nalu( char **naluData )
 	while (nextNalu())
 	{
 		startCodeLen = skipNaluStartCode();	///< 跳过startCode
-		curNaluDataPos = m_iFileStream.tellg();	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
+		curNaluDataPos = m_stream->ptr - m_stream->buf;	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
 		curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
 		if (readNextByte((char*)&nextByte) == Failed)
 			return Failed;
 		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
 		if (nal_unit_type == NAL_PPS)
 		{
-			m_iFileStream.seekg(curNaluPos);
+			m_stream->ptr = m_stream->buf + curNaluPos;
 			return readNaluData(naluData);
 		}
 	}
@@ -211,7 +242,7 @@ size_t H264Analysis::next_PPS_Nalu( char **naluData )
 
 //************************************
 // 函数名:	H264Analysis::next_I_Nalu
-// 描述:	获取下一个包含I帧的Nalu, 并将数据放入参数Nalu传出，完成后文件指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
+// 描述:	获取下一个包含I帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
 // 返回值:	size_t => NALU数据部分长度
 // 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 // 日期: 	2016/05/17
@@ -231,7 +262,7 @@ size_t H264Analysis::next_I_Nalu( char **naluData )
 	while (nextNalu())
 	{
 		startCodeLen = skipNaluStartCode();	///< 跳过startCode
-		curNaluDataPos = m_iFileStream.tellg();	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
+		curNaluDataPos = m_stream->ptr - m_stream->buf;	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
 		curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
 		if (readNextByte((char*)&nextByte) == Failed)
 			return Failed;
@@ -243,7 +274,7 @@ size_t H264Analysis::next_I_Nalu( char **naluData )
 
 			if (slice_type == SLICE_TYPE_I1 || slice_type == SLICE_TYPE_I2)
 			{
-				m_iFileStream.seekg(curNaluPos);
+				m_stream->ptr = m_stream->buf + curNaluPos;
 				return readNaluData(naluData);
 			}
 		}
@@ -253,7 +284,7 @@ size_t H264Analysis::next_I_Nalu( char **naluData )
 
 //************************************
 // 函数名:	H264Analysis::next_P_Nalu
-// 描述:	获取下一个包含P帧的Nalu, 并将数据放入参数Nalu传出，完成后文件指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
+// 描述:	获取下一个包含P帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
 // 返回值:	size_t => NALU数据部分长度
 // 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 // 日期: 	2016/05/17
@@ -272,7 +303,7 @@ size_t H264Analysis::next_P_Nalu( char **naluData )
 	while (nextNalu())
 	{
 		startCodeLen = skipNaluStartCode();	///< 跳过startCode
-		curNaluDataPos = m_iFileStream.tellg();	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
+		curNaluDataPos = m_stream->ptr - m_stream->buf;	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
 		curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
 		if (readNextByte((char*)&nextByte) == Failed)
 			return Failed;
@@ -284,7 +315,7 @@ size_t H264Analysis::next_P_Nalu( char **naluData )
 
 			if (slice_type == SLICE_TYPE_P1 || slice_type == SLICE_TYPE_P2)
 			{
-				m_iFileStream.seekg(curNaluPos);
+				m_stream->ptr = m_stream->buf + curNaluPos;
 				return readNaluData(naluData);
 			}
 		}
@@ -294,7 +325,7 @@ size_t H264Analysis::next_P_Nalu( char **naluData )
 
 //************************************
 // 函数名:	H264Analysis::next_B_Nalu
-// 描述:	获取下一个包含B帧的Nalu, 并将数据放入参数Nalu传出，完成后文件指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
+// 描述:	获取下一个包含B帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
 // 返回值:	size_t => NALU数据部分长度
 // 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 // 日期: 	2016/05/17
@@ -313,7 +344,7 @@ size_t H264Analysis::next_B_Nalu( char **naluData )
 	while (nextNalu())
 	{
 		startCodeLen = skipNaluStartCode();	///< 跳过startCode
-		curNaluDataPos = m_iFileStream.tellg();	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
+		curNaluDataPos = m_stream->ptr - m_stream->buf;	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
 		curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
 		if (readNextByte((char*)&nextByte) == Failed)
 			return Failed;
@@ -325,7 +356,7 @@ size_t H264Analysis::next_B_Nalu( char **naluData )
 
 			if (slice_type == SLICE_TYPE_B1 || slice_type == SLICE_TYPE_B2)
 			{
-				m_iFileStream.seekg(curNaluPos);
+				m_stream->ptr = m_stream->buf + curNaluPos;
 				return readNaluData(naluData);
 			}
 		}
@@ -335,7 +366,7 @@ size_t H264Analysis::next_B_Nalu( char **naluData )
 
 //************************************
 // 函数名:	H264Analysis::next_SI_Nalu
-// 描述:	获取下一个包含SI帧的Nalu, 并将数据放入参数Nalu传出，完成后文件指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
+// 描述:	获取下一个包含SI帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
 // 返回值:	size_t => NALU数据部分长度
 // 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 // 日期: 	2016/05/17
@@ -354,7 +385,7 @@ size_t H264Analysis::next_SI_Nalu( char **naluData )
 	while (nextNalu())
 	{
 		startCodeLen = skipNaluStartCode();	///< 跳过startCode
-		curNaluDataPos = m_iFileStream.tellg();	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
+		curNaluDataPos = m_stream->ptr - m_stream->buf;	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
 		curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
 		if (readNextByte((char*)&nextByte) == Failed)
 			return Failed;
@@ -366,7 +397,7 @@ size_t H264Analysis::next_SI_Nalu( char **naluData )
 
 			if (slice_type == SLICE_TYPE_SI1 || slice_type == SLICE_TYPE_SI2)
 			{
-				m_iFileStream.seekg(curNaluPos);
+				m_stream->ptr = m_stream->buf + curNaluPos;
 				return readNaluData(naluData);
 			}
 		}
@@ -376,7 +407,7 @@ size_t H264Analysis::next_SI_Nalu( char **naluData )
 
 //************************************
 // 函数名:	H264Analysis::next_SP_Nalu
-// 描述:	获取下一个包含SP帧的Nalu, 并将数据放入参数Nalu传出，完成后文件指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
+// 描述:	获取下一个包含SP帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
 // 返回值:	size_t => NALU数据部分长度
 // 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 // 日期: 	2016/05/17
@@ -395,7 +426,7 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 	while (nextNalu())
 	{
 		startCodeLen = skipNaluStartCode();	///< 跳过startCode
-		curNaluDataPos = m_iFileStream.tellg();	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
+		curNaluDataPos = m_stream->ptr - m_stream->buf;	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
 		curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
 		if (readNextByte((char*)&nextByte) == Failed)
 			return Failed;
@@ -407,7 +438,7 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 
 			if (slice_type == SLICE_TYPE_SP1 || slice_type == SLICE_TYPE_SP2)
 			{
-				m_iFileStream.seekg(curNaluPos);
+				m_stream->ptr = m_stream->buf + curNaluPos;
 				return readNaluData(naluData);
 			}
 		}
@@ -417,7 +448,7 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 
 //************************************
 // 函数名:	H264Analysis::skipNaluStartCode
-// 描述:	跳过Nalu的startCode, 并返回跳过的startCode长度，完成后文件指针指向Nalu的数据部分开头
+// 描述:	跳过Nalu的startCode, 并返回跳过的startCode长度，完成后数据流指针指向Nalu的数据部分开头
 // 返回值:	size_t => 跳过的startCode长度
 // 日期: 	2016/05/17
 // 作者: 	YJZ
@@ -427,13 +458,13 @@ size_t H264Analysis::skipNaluStartCode()
 {
 	int len = 0;
 	char *p = new char[4];
-	int curNaluPos = m_iFileStream.tellg();
+	int curNaluPos = m_stream->ptr - m_stream->buf;
 	if (readNextBytes(&p, 4) == Failed)
 		return Failed;
 	if (p[0] == 0x00 && p[1] == 0x00 && p[2] == 0x01)
 	{
 		len = 3;
-		m_iFileStream.seekg(curNaluPos+3);
+		m_stream->ptr = m_stream->buf + curNaluPos + 3;
 	}
 	else if (p[0] == 0x00 && p[1] == 0x00 && p[2] == 0x00 && p[3] == 0x01)
 	{
@@ -443,7 +474,7 @@ size_t H264Analysis::skipNaluStartCode()
 
 	if (len == 0)
 	{
-		m_iFileStream.seekg(curNaluPos);
+		m_stream->ptr = m_stream->buf + curNaluPos;
 	}
 
 	return len;
@@ -462,13 +493,15 @@ size_t H264Analysis::skipNaluStartCode()
 //************************************
 STATUS H264Analysis::readNextBytes( char **p, int len)
 {
-	if (len <= 0 || m_iFileStream.eof())
+	if (len <= 0 || m_stream->ptr - m_stream->buf + len > m_stream->len)
 	{
 		return Failed;
 	}
 
 	*p = new char[len];
-	m_iFileStream.read(*p, len);
+	char *c = *p;
+	while(len--)
+		*c++ = *m_stream->ptr++;
 	return Success;
 }
 
@@ -484,12 +517,13 @@ STATUS H264Analysis::readNextBytes( char **p, int len)
 //************************************
 STATUS H264Analysis::readNextByte( char *c )
 {
-	if (m_iFileStream.eof())
+	if (m_stream->ptr - m_stream->buf >= m_stream->len)
 	{
 		return Failed;
 	}
 
-	m_iFileStream.read(c, 1);
+	*c = *m_stream->ptr++;
+
 	return Success;
 }
 
@@ -508,28 +542,28 @@ STATUS H264Analysis::ueDecode(UINT32 *codeNum)
 	int leadingZeroBits = -1;
 	for (char b = 0; !b; leadingZeroBits++)
 	{
-		if (m_binCurPos == 0)
+		if (m_stream->binPos == 0)
 		{
-			if (readNextByte((char*)&m_lastByte) == Failed)
+			if (readNextByte((char*)&m_stream->lastByte) == Failed)
 				return Failed;
 		}
-		b = B8_VAL_BASE_R(m_lastByte, m_binCurPos, 1);	// read next bit
-		m_binCurPos++;	// 指针下移
-		if (m_binCurPos % 8 == 0)
-			m_binCurPos = 0;
+		b = B8_VAL_BASE_R(m_stream->lastByte, m_stream->binPos, 1);	// read next bit
+		m_stream->binPos++;	// 指针下移
+		if (m_stream->binPos % 8 == 0)
+			m_stream->binPos = 0;
 	}
 
 	if (leadingZeroBits > 32)
 	{
-		throw exception("");
+		throw exception();
 		return -1;
 	}
 
 	// 指针还有剩余位置未读
 	int readBits = 0;
-	int leftBits = 8 - m_binCurPos;
+	int leftBits = 8 - m_stream->binPos;
 	int leadingZeroBytes = 0;
-	if (m_binCurPos != 0)
+	if (m_stream->binPos != 0)
 	{
 		if (leadingZeroBits == 0)
 		{
@@ -539,7 +573,7 @@ STATUS H264Analysis::ueDecode(UINT32 *codeNum)
 		{
 			if (leadingZeroBits <= leftBits)	// 剩余位置足够满足哥伦布解码
 			{
-				readBits = B8_VAL_BASE_R(m_lastByte, m_binCurPos, leadingZeroBits);
+				readBits = B8_VAL_BASE_R(m_stream->lastByte, m_stream->binPos, leadingZeroBits);
 			}
 			else	// 剩余位置不够满足哥伦布解码
 			{
@@ -554,16 +588,16 @@ STATUS H264Analysis::ueDecode(UINT32 *codeNum)
 
 				// 提取完整的Exp-Golomb-Code
 				golombCode &= B32_VAL_MASK(0, leftLeadingZeroBits);
-				golombCode = (golombCode>>leftBits)|(B32_VAL_BASE_L((UINT32)B8_VAL_BASE_L(m_lastByte, m_binCurPos), 24));
+				golombCode = (golombCode>>leftBits)|(B32_VAL_BASE_L((UINT32)B8_VAL_BASE_L(m_stream->lastByte, m_stream->binPos), 24));
 				golombCode = B32_VAL_BASE_R(golombCode, 0, leadingZeroBits);
 				*codeNum = golombCode;
-				
+
 				// 存放最后字节
-				m_lastByte = p[leftLeadingZeroBytes-1];
+				m_stream->lastByte = p[leftLeadingZeroBytes-1];
 				delete [] p;
 			}
-			m_binCurPos += leadingZeroBits;
-			m_binCurPos %= 8;
+			m_stream->binPos += leadingZeroBits;
+			m_stream->binPos %= 8;
 			*codeNum = pow(2.0, leadingZeroBits) - 1 + readBits;
 		}
 	}
@@ -589,11 +623,11 @@ STATUS H264Analysis::ueDecode(UINT32 *codeNum)
 			*codeNum = golombCode;
 
 			// 存放最后字节
-			m_lastByte = p[leadingZeroBytes-1];
+			m_stream->lastByte = p[leadingZeroBytes-1];
 			delete [] p;
 
-			m_binCurPos += leadingZeroBits;
-			m_binCurPos %= 8;
+			m_stream->binPos += leadingZeroBits;
+			m_stream->binPos %= 8;
 			*codeNum = pow(2.0, leadingZeroBits) - 1 + readBits;
 		}
 	}

@@ -13,20 +13,26 @@ using namespace std;
 class H264Analysis
 {
 public:
-	enum { Success = 1, Failed = 0 };
+	enum { Success = 1, Failed = 0, FileEnd = 0 };
 public:
 	H264Analysis(void);
 	~H264Analysis(void);
 	/**
-	 * 描述:	获取并打开文件
-	 * 返回值:	std::ifstream&
+	 * 描述:	获取数据流
+	 * 返回值:	DataStream*
 	 * 参数: 	const string & fileName
 	 */
-	ifstream& getOpenFile(const string &fileName);
-	void closeFile();	///< 关闭文件
+	DataStream* getStream(const string &fileName);
 
 	/**
-	 * 描述:	读取Nalu数据部分（不包括startCode）并跳过startCode，完成后文件指针指向Nalu的数据部分开头
+	 * 函数名:	H264Analysis::clearStream
+	 * 描述:	清空流数据
+	 * 返回值:	void
+	 */
+	void clearStream();
+
+	/**
+	 * 描述:	跳过startCode并读取Nalu数据部分（不包括startCode），完成后数据流指针指向Nalu的数据部分开头
 	 * 返回值:	size_t => Nalu数据部分长度
 	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 	 */
@@ -40,49 +46,49 @@ public:
 	STATUS nextNalu(int *naluPos = NULL);
 
 	/**
-	 * 描述:	获取下一个包含SPS的Nalu, 并将数据放入参数Nalu传出，完成后文件指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
+	 * 描述:	获取下一个包含SPS的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => Nalu数据部分长度
 	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 	 */
 	size_t next_SPS_Nalu(char **naluData = NULL);
 
 	/**
-	 * 描述:	获取下一个包含PPS的Nalu, 并将数据放入参数Nalu传出，完成后文件指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
+	 * 描述:	获取下一个包含PPS的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => NALU数据部分长度
 	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 	 */
 	size_t next_PPS_Nalu(char **naluData = NULL);
 
 	/**
-	 * 描述:	获取下一个包含I帧的Nalu, 并将数据放入参数Nalu传出，完成后文件指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
+	 * 描述:	获取下一个包含I帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => NALU数据部分长度
 	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 	 */
 	size_t next_I_Nalu(char **naluData = NULL);
 
 	/**
-	 * 描述:	获取下一个包含P帧的Nalu, 并将数据放入参数Nalu传出，完成后文件指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
+	 * 描述:	获取下一个包含P帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => NALU数据部分长度
 	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 	 */
 	size_t next_P_Nalu(char **naluData = NULL);
 
 	/**
-	 * 描述:	获取下一个包含B帧的Nalu, 并将数据放入参数Nalu传出，完成后文件指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
+	 * 描述:	获取下一个包含B帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => NALU数据部分长度
 	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 	 */
 	size_t next_B_Nalu(char **naluData = NULL);
 
 	/**
-	 * 描述:	获取下一个包含SI帧的Nalu, 并将数据放入参数Nalu传出，完成后文件指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
+	 * 描述:	获取下一个包含SI帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => NALU数据部分长度
 	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 	 */
 	size_t next_SI_Nalu(char **naluData = NULL);
 
 	/**
-	 * 描述:	获取下一个包含SP帧的Nalu, 并将数据放入参数Nalu传出，完成后文件指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
+	 * 描述:	获取下一个包含SP帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => NALU数据部分长度
 	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
 	 */
@@ -90,7 +96,7 @@ public:
 
 public:
 	/**
-	 * 描述:	跳过Nalu的startCode, 并返回跳过的startCode长度，完成后文件指针指向Nalu的数据部分开头
+	 * 描述:	跳过Nalu的startCode, 并返回跳过的startCode长度，完成后数据流指针指向Nalu的数据部分开头
 	 * 返回值:	size_t => 跳过的startCode长度
 	 */
 	size_t skipNaluStartCode();
@@ -117,8 +123,6 @@ public:
 	 */
 	STATUS ueDecode(UINT32 *codeNum);		///< 解码无符号整型指数哥伦布编码
 private:
-	ifstream m_iFileStream;
-	char m_binCurPos;	///< 二进制指针的位置, 始终指向要读的下一位(8位, 从0开始, 值为0~7)
-	UINT8 m_lastByte;	///< 最后一次读的字节内容
+	DataStream *m_stream;	///< 数据流
 };
 #endif

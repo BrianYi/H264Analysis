@@ -90,7 +90,7 @@ const char B8_VAL_MASK(unsigned int pos, unsigned int len)
 { 
 	if (pos+len > 8)
 	{
-		throw exception("");
+		throw exception();
 		return 0;
 	}
 	return ((0xff >> (8-len))<<(8-pos-len)); 
@@ -103,7 +103,7 @@ const UINT32 B32_VAL_MASK(unsigned int pos, unsigned int len)
 {
 	if (pos+len > 32)
 	{
-		throw exception("");
+		throw exception();
 		return 0;
 	}
 	return ((0xffffffff >> (32-len))<<(32-pos-len));
@@ -117,7 +117,7 @@ const char B8_VAL_MASK(unsigned int pos)
 { 
 	if (pos >= 8)
 	{
-		throw exception("");
+		throw exception();
 		return 0;
 	}
 	return (0xff >> pos); 
@@ -130,7 +130,7 @@ const UINT32 B32_VAL_MASK(unsigned int pos)
 { 
 	if (pos >= 32)
 	{
-		throw exception("");
+		throw exception();
 		return 0;
 	}
 	return (0xffffffff >> pos); 
