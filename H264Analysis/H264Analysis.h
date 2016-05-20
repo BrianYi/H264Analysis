@@ -7,7 +7,7 @@
 #include <math.h>
 #include <Windows.h>
 #include <iomanip>
-#include "PublicDef.h"
+#include "H264PublicDef.h"
 using namespace std;
 
 class H264Analysis

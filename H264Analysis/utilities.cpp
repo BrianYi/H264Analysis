@@ -5,7 +5,6 @@
 #include <iomanip>
 #include <bitset>
 #include <Windows.h>
-using namespace std;
 
 //
 // ×Ö½ÚÎ»µßµ¹(Èç: 0011 0001 => 1000 1100)
@@ -53,8 +52,8 @@ int bits_get_byte_num(int len)
 //
 void bits_binary_printf(char c)
 {
-	bitset<8> tmp((int)c);
-	cout << tmp;
+	std::bitset<8> tmp((int)c);
+	std::cout << tmp;
 }
 
 //
@@ -65,7 +64,7 @@ void bits_binary_printf(char *data, int len)
 	for (int i = len-1; i >= 0; i--)
 	{
 		bits_binary_printf(data[i]);
-		cout << " ";
+		std::cout << " ";
 	}
 }
 
@@ -77,10 +76,10 @@ void bytes_hex_printf(char *data, int len)
 	for (int i = 0; i < len; i++)
 	{
 		if (!(i % 16) && i)
-			cout << endl;
-		cout << hex << setw(2) << setfill('0') << ((int)data[i] & 0xff) << " ";
+			std::cout << std::endl;
+		std::cout << std::hex << std::setw(2) << std::setfill('0') << ((int)data[i] & 0xff) << " ";
 	}
-	cout << endl;
+	std::cout << std::endl;
 }
 
 //
@@ -90,7 +89,7 @@ const char B8_VAL_MASK(unsigned int pos, unsigned int len)
 { 
 	if (pos+len > 8)
 	{
-		throw exception();
+		throw std::exception();
 		return 0;
 	}
 	return ((0xff >> (8-len))<<(8-pos-len)); 
@@ -103,7 +102,7 @@ const UINT32 B32_VAL_MASK(unsigned int pos, unsigned int len)
 {
 	if (pos+len > 32)
 	{
-		throw exception();
+		throw std::exception();
 		return 0;
 	}
 	return ((0xffffffff >> (32-len))<<(32-pos-len));
@@ -117,7 +116,7 @@ const char B8_VAL_MASK(unsigned int pos)
 { 
 	if (pos >= 8)
 	{
-		throw exception();
+		throw std::exception();
 		return 0;
 	}
 	return (0xff >> pos); 
@@ -130,7 +129,7 @@ const UINT32 B32_VAL_MASK(unsigned int pos)
 { 
 	if (pos >= 32)
 	{
-		throw exception();
+		throw std::exception();
 		return 0;
 	}
 	return (0xffffffff >> pos); 

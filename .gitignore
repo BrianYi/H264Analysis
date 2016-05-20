@@ -51,3 +51,4 @@ ui_*.h
 
 
 movie
+/H264Analysis/*.user

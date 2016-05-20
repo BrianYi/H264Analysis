@@ -75,7 +75,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="H264Analysis.h" />
-    <ClInclude Include="PublicDef.h" />
+    <ClInclude Include="H264PublicDef.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

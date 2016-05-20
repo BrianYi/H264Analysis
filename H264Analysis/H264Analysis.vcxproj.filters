@@ -29,7 +29,7 @@
     <ClInclude Include="H264Analysis.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="PublicDef.h">
+    <ClInclude Include="H264PublicDef.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
