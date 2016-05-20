@@ -32,9 +32,9 @@ public:
 	void clearStream();
 
 	/**
-	 * 描述:	跳过startCode并读取Nalu数据部分（不包括startCode），完成后数据流指针指向Nalu的数据部分开头
-	 * 返回值:	size_t => Nalu数据部分长度
-	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
+	 * 描述:	读取Nalu，完成后数据流指针指向Nalu的开头
+	 * 返回值:	size_t => Nalu长度（包含startCode）
+	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
 	size_t readNaluData(char **naluData = NULL);
 
@@ -46,57 +46,57 @@ public:
 	STATUS nextNalu(int *naluPos = NULL);
 
 	/**
-	 * 描述:	获取下一个包含SPS的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
-	 * 返回值:	size_t => Nalu数据部分长度
-	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
+	 * 描述:	获取下一个包含SPS的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的开头(Nalu为空时，不获取数据，只返回长度)
+	 * 返回值:	size_t => Nalu长度（包含startCode）
+	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
 	size_t next_SPS_Nalu(char **naluData = NULL);
 
 	/**
-	 * 描述:	获取下一个包含PPS的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
-	 * 返回值:	size_t => NALU数据部分长度
-	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
+	 * 描述:	获取下一个包含PPS的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的开头(Nalu为空时，不获取数据，只返回长度)
+	 * 返回值:	size_t => Nalu长度（包含startCode）
+	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
 	size_t next_PPS_Nalu(char **naluData = NULL);
 
 	/**
-	 * 描述:	获取下一个包含I帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
-	 * 返回值:	size_t => NALU数据部分长度
-	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
+	 * 描述:	获取下一个包含I帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的开头(Nalu为空时，不获取数据，只返回长度)
+	 * 返回值:	size_t => Nalu长度（包含startCode）
+	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
 	size_t next_I_Nalu(char **naluData = NULL);
 
 	/**
-	 * 描述:	获取下一个包含P帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
-	 * 返回值:	size_t => NALU数据部分长度
-	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
+	 * 描述:	获取下一个包含P帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的开头(Nalu为空时，不获取数据，只返回长度)
+	 * 返回值:	size_t => Nalu长度（包含startCode）
+	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
 	size_t next_P_Nalu(char **naluData = NULL);
 
 	/**
-	 * 描述:	获取下一个包含B帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
-	 * 返回值:	size_t => NALU数据部分长度
-	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
+	 * 描述:	获取下一个包含B帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的开头(Nalu为空时，不获取数据，只返回长度)
+	 * 返回值:	size_t => Nalu长度（包含startCode）
+	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
 	size_t next_B_Nalu(char **naluData = NULL);
 
 	/**
-	 * 描述:	获取下一个包含SI帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
-	 * 返回值:	size_t => NALU数据部分长度
-	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
+	 * 描述:	获取下一个包含SI帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的开头(Nalu为空时，不获取数据，只返回长度)
+	 * 返回值:	size_t => Nalu长度（包含startCode）
+	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
 	size_t next_SI_Nalu(char **naluData = NULL);
 
 	/**
-	 * 描述:	获取下一个包含SP帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的数据部分开头(Nalu为空时，不获取数据，只返回长度)
-	 * 返回值:	size_t => NALU数据部分长度
-	 * 参数: 	char * * naluData(out: 返回Nalu数据部分, 为空时不获取数据)
+	 * 描述:	获取下一个包含SP帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的开头(Nalu为空时，不获取数据，只返回长度)
+	 * 返回值:	size_t => Nalu长度（包含startCode）
+	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
 	size_t next_SP_Nalu(char **naluData = NULL);	
 
 public:
 	/**
-	 * 描述:	跳过Nalu的startCode, 并返回跳过的startCode长度，完成后数据流指针指向Nalu的数据部分开头
+	 * 描述:	跳过Nalu的startCode, 并返回跳过的startCode长度，完成后数据流指针指向Nalu的开头
 	 * 返回值:	size_t => 跳过的startCode长度
 	 */
 	size_t skipNaluStartCode();
