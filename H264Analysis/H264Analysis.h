@@ -94,6 +94,12 @@ public:
 	 */
 	size_t next_SP_Nalu(char **naluData = NULL);	
 
+	/**
+	 * 描述:	跳转到指定位置(0~100)
+	 * 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
+	 * 参数: 	short int persent(in: 0~100, 传入要跳转的百分比)
+	 */
+	STATUS skipTo(short int persent);
 public:
 	/**
 	 * 描述:	跳过Nalu的startCode, 并返回跳过的startCode长度，完成后数据流指针指向Nalu的开头

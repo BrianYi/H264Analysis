@@ -1,6 +1,6 @@
 #include "H264Analysis/H264Analysis.h"
 #include <string>
-const string g_fileNameStr = "../movie/500MTest.h264";
+const string g_fileNameStr = "../movie/264.h264";
 
 void H264AnalysisDebug();	// ²âÊÔº¯Êý
 
@@ -23,6 +23,7 @@ void H264AnalysisDebug()
 	int NaluCount = 0;
 	int NaluSize = 0;
 	int NaluTotalSize = 0;
+	h264Analysis.skipTo(99);
 	while (h264Analysis.nextNalu())
 	{
 		unsigned char nextByte = 0;

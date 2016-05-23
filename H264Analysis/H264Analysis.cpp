@@ -165,6 +165,7 @@ STATUS H264Analysis::nextNalu(int *naluPos)
 		}
 	}
 
+	// 重新回到Nalu的头部
 	int curNaluDataPos = m_stream->ptr - m_stream->buf;
 	int curNaluPos = curNaluDataPos - i;
 	m_stream->ptr = m_stream->buf + curNaluPos;
@@ -446,6 +447,27 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 	}
 	return Failed;
 }
+
+
+//************************************
+// 函数名:	H264Analysis::skipTo
+// 描述:	跳转到指定位置(0~100)
+// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
+// 参数: 	short int persent(in: 0~100, 传入要跳转的百分比)
+// 日期: 	2016/05/23
+// 作者: 	YJZ
+// 修改记录:
+//************************************
+STATUS H264Analysis::skipTo( short int persent )
+{
+	if (persent < 0 || persent > 100)
+		return Failed;
+
+	size_t pos = m_stream->len * persent * 0.01;
+	m_stream->ptr = m_stream->buf + pos;
+	return Success;
+}
+
 
 //************************************
 // 函数名:	H264Analysis::skipNaluStartCode
