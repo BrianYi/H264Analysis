@@ -38,7 +38,7 @@ public:
 	 * 返回值:	size_t => Nalu长度（包含startCode）
 	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
-	size_t readNaluData(char **naluData = NULL);
+	size_t readNaluData(char *naluData = NULL);
 
 	/**
 	 * 描述:	找到下个Nalu的起始位置
@@ -52,49 +52,49 @@ public:
 	 * 返回值:	size_t => Nalu长度（包含startCode）
 	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
-	size_t next_SPS_Nalu(char **naluData = NULL);
+	size_t next_SPS_Nalu(char *naluData = NULL);
 
 	/**
 	 * 描述:	获取下一个包含PPS的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的开头(Nalu为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => Nalu长度（包含startCode）
 	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
-	size_t next_PPS_Nalu(char **naluData = NULL);
+	size_t next_PPS_Nalu(char *naluData = NULL);
 
 	/**
 	 * 描述:	获取下一个包含I帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的开头(Nalu为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => Nalu长度（包含startCode）
 	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
-	size_t next_I_Nalu(char **naluData = NULL);
+	size_t next_I_Nalu(char *naluData = NULL);
 
 	/**
 	 * 描述:	获取下一个包含P帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的开头(Nalu为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => Nalu长度（包含startCode）
 	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
-	size_t next_P_Nalu(char **naluData = NULL);
+	size_t next_P_Nalu(char *naluData = NULL);
 
 	/**
 	 * 描述:	获取下一个包含B帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的开头(Nalu为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => Nalu长度（包含startCode）
 	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
-	size_t next_B_Nalu(char **naluData = NULL);
+	size_t next_B_Nalu(char *naluData = NULL);
 
 	/**
 	 * 描述:	获取下一个包含SI帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的开头(Nalu为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => Nalu长度（包含startCode）
 	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
-	size_t next_SI_Nalu(char **naluData = NULL);
+	size_t next_SI_Nalu(char *naluData = NULL);
 
 	/**
 	 * 描述:	获取下一个包含SP帧的Nalu, 并将数据放入参数Nalu传出，完成后数据流指针指向Nalu的开头(Nalu为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => Nalu长度（包含startCode）
 	 * 参数: 	char * * naluData(out: 返回Nalu, 为空时不获取数据)
 	 */
-	size_t next_SP_Nalu(char **naluData = NULL);	
+	size_t next_SP_Nalu(char *naluData = NULL);	
 
 	/**
 	 * 描述:	跳转到指定位置(0~100)
@@ -112,10 +112,10 @@ public:
 	/**
 	 * 描述:	读取接下来的len个字节
 	 * 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
-	 * 参数: 	char * * p(out: 传出读取的字节数据，需要调用者释放内存)
+	 * 参数: 	char * p(out: 传出读取的字节数据，需要调用者释放内存)
 	 * 参数: 	int len(in: 读取字节的长度)
 	 */
-	STATUS readNextBytes(char **p, int len);///< 读取len个字节
+	size_t readNextBytes(char *p, int len);///< 读取len个字节
 
 	/**
 	 * 描述:	读取接下来的1个字节
@@ -130,13 +130,13 @@ public:
 	 * 参数: 	UINT32 * codeNum(out: 传出解码后的值)
 	 */
 	STATUS ueDecode(UINT32 *codeNum);		///< 解码无符号整型指数哥伦布编码
-private:
+public:
 	//DataStream *m_stream;	///< 数据流
 	ifstream m_fileStream;	///< 文件流
 	unsigned int m_len;	///< 流数据长度
 	char m_binPos;		///< 二进制指针的位置, 始终指向要读的下一位(8位, 从0开始, 值为0~7)
 	UINT8 m_lastByte;		///< 最后一次读的字节内容
-	
+	PDataStream m_pStreamBuf;	///< 
 private:
 	ofstream m_debugFileStream; ///< 测试用
 };
