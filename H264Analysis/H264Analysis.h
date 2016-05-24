@@ -10,6 +10,8 @@
 #include "H264PublicDef.h"
 using namespace std;
 
+//#define TIME_TEST
+
 class H264Analysis
 {
 public:
@@ -22,14 +24,14 @@ public:
 	 * 返回值:	DataStream*
 	 * 参数: 	const string & fileName
 	 */
-	DataStream* getStream(const string &fileName);
+	ifstream& getOpenFile(const string &fileName);
 
 	/**
 	 * 函数名:	H264Analysis::clearStream
 	 * 描述:	清空流数据
 	 * 返回值:	void
 	 */
-	void clearStream();
+	void closeFile();
 
 	/**
 	 * 描述:	读取Nalu，完成后数据流指针指向Nalu的开头
@@ -129,6 +131,13 @@ public:
 	 */
 	STATUS ueDecode(UINT32 *codeNum);		///< 解码无符号整型指数哥伦布编码
 private:
-	DataStream *m_stream;	///< 数据流
+	//DataStream *m_stream;	///< 数据流
+	ifstream m_fileStream;	///< 文件流
+	unsigned int m_len;	///< 流数据长度
+	char m_binPos;		///< 二进制指针的位置, 始终指向要读的下一位(8位, 从0开始, 值为0~7)
+	UINT8 m_lastByte;		///< 最后一次读的字节内容
+	
+private:
+	ofstream m_debugFileStream; ///< 测试用
 };
 #endif

@@ -41,7 +41,7 @@ enum SliceType {
 };
 
 typedef int STATUS;	// 返回状态 ( 0 => Failed, 1 => Success)
-
+const size_t BUFSIZE = 10 * 1024 * 1024;	// 一次读取的字节数
 
 //
 // 流结构

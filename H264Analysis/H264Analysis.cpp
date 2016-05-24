@@ -3,20 +3,24 @@
 H264Analysis::H264Analysis(void)
 {
 	/// 初始化流结构
-	m_stream = new DataStream();
-	m_stream->buf = NULL;
-	m_stream->len = 0;
-	m_stream->ptr = NULL;
-	m_stream->lastByte = 0;
-	m_stream->binPos = 0;
+	//m_stream = new DataStream();
+	//m_stream->buf = NULL;
+	m_len = 0;
+	//m_stream->ptr = NULL;
+	m_lastByte = 0;
+	m_binPos = 0;
+
+	m_debugFileStream.open("log.txt", ios::trunc | ios::out);
 }
 
 
 H264Analysis::~H264Analysis(void)
 {
-	clearStream();
-	delete m_stream;
-	m_stream = NULL;
+	if (m_fileStream.is_open())
+		closeFile();
+
+	if (m_debugFileStream.is_open())
+		m_debugFileStream.close();
 }
 
 
@@ -29,29 +33,28 @@ H264Analysis::~H264Analysis(void)
 // 作者: 	YJZ
 // 修改记录:
 //************************************
-DataStream* H264Analysis::getStream( const string &fileName )
+ifstream& H264Analysis::getOpenFile( const string &fileName )
 {
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
 	/// 初始化流结构
-	if (m_stream->buf)
-		delete [] m_stream->buf;
-	m_stream->buf = NULL;
-	m_stream->len = 0;
-	m_stream->ptr = NULL;
-	m_stream->lastByte = 0;
-	m_stream->binPos = 0;
+	if (m_fileStream.is_open())
+		m_fileStream.close();
+	m_len = 0;
+	m_lastByte = 0;
+	m_binPos = 0;
 
 	/// 文件流数据存放到流结构中
-	ifstream fileStream(fileName.c_str(), ios_base::binary);
-	fileStream.seekg(0, ios_base::end);
-	m_stream->len = fileStream.tellg();
-	m_stream->buf = new char [m_stream->len];
-	fileStream.seekg(ios_base::beg);
-	streambuf *sb = fileStream.rdbuf();
-	sb->sgetn(m_stream->buf, m_stream->len);
-	m_stream->ptr = m_stream->buf;
-	fileStream.close();
-
-	return m_stream;
+	m_fileStream.open(fileName.c_str(), ios_base::binary);
+	m_fileStream.seekg(0, ios_base::end);
+	m_len = m_fileStream.tellg();
+	m_fileStream.seekg(ios_base::beg);
+#ifdef TIME_TEST
+	DWORD time_diff = GetTickCount() - time_beg;
+	m_debugFileStream << "getOpenFile " << time_diff << endl;
+#endif
+	return m_fileStream;
 }
 
 
@@ -64,22 +67,23 @@ DataStream* H264Analysis::getStream( const string &fileName )
 // 作者: 	YJZ
 // 修改记录:
 //************************************
-void H264Analysis::clearStream()
+void H264Analysis::closeFile()
 {
-	if (m_stream)
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
+	if (m_fileStream.is_open())
 	{
-		if (m_stream->buf)
-		{
-			delete [] m_stream->buf;
-			m_stream->buf = NULL;
-		}
+		m_fileStream.close();
 
-		m_stream->buf = NULL;
-		m_stream->len = 0;
-		m_stream->ptr = NULL;
-		m_stream->binPos = 0;
-		m_stream->lastByte = 0;
+		m_len = 0;
+		m_binPos = 0;
+		m_lastByte = 0;
 	}
+#ifdef TIME_TEST
+	DWORD time_diff = GetTickCount() - time_beg;
+	m_debugFileStream << "closeFile " << time_diff << endl;
+#endif
 }
 
 //************************************
@@ -93,8 +97,11 @@ void H264Analysis::clearStream()
 //************************************
 size_t H264Analysis::readNaluData( char **naluData )
 {
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
 	// 获取当前的Nalu位置(包含startCode)
-	int curNaluPos = m_stream->ptr - m_stream->buf;
+	int curNaluPos = m_fileStream.tellg();
 	int len = 0;
 
 	// 定位到跳过startCode位置
@@ -108,14 +115,14 @@ size_t H264Analysis::readNaluData( char **naluData )
 	if (nextNalu(&nextNaluPos) == FileEnd)
 	{
 		// 已到文件结尾
-		nextNaluPos = m_stream->len;
+		nextNaluPos = m_len;
 	}
-
-	// 回到原来Nalu的位置
-	m_stream->ptr = m_stream->buf + curNaluPos;
 
 	// 读取Nalu的数据长度
 	len = nextNaluPos - curNaluPos; // Nalu长度
+
+	// 回到原来Nalu的位置
+	m_fileStream.seekg(-len, ios::cur);
 	
 	// 置位二进制指针标记
 	if (naluData)
@@ -123,12 +130,14 @@ size_t H264Analysis::readNaluData( char **naluData )
 		// 读取Nalu数据
 		if (readNextBytes(naluData, len) == Failed)
 			throw exception();
-		m_stream->binPos = 0;
-		m_stream->lastByte = (*naluData)[0];
+		m_binPos = 0;
+		m_lastByte = (*naluData)[0];
+		m_fileStream.seekg(-len, ios::cur);	// 回到原来的Nalu位置
 	}
-
-	m_stream->ptr = m_stream->buf + curNaluPos; // 回到原来的Nalu位置
-
+#ifdef TIME_TEST
+	DWORD time_diff = GetTickCount() - time_beg;
+	m_debugFileStream << "readNaluData " << time_diff << endl;
+#endif
 	return len;
 }
 
@@ -143,6 +152,9 @@ size_t H264Analysis::readNaluData( char **naluData )
 //************************************
 STATUS H264Analysis::nextNalu(int *naluPos)
 {
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
 	int i = 0;
 	char c = 0;
 	while(true) // 
@@ -166,11 +178,17 @@ STATUS H264Analysis::nextNalu(int *naluPos)
 	}
 
 	// 重新回到Nalu的头部
-	int curNaluDataPos = m_stream->ptr - m_stream->buf;
-	int curNaluPos = curNaluDataPos - i;
-	m_stream->ptr = m_stream->buf + curNaluPos;
+	m_fileStream.seekg(-i, ios::cur);
+	//int curNaluDataPos = m_fileStream.tellg();
+	//int curNaluPos = curNaluDataPos - i;
+	//m_stream->ptr = m_stream->buf + curNaluPos;
 	if (naluPos)
-		*naluPos = curNaluPos;
+		*naluPos = m_fileStream.tellg();
+
+#ifdef TIME_TEST
+	DWORD time_diff = GetTickCount() - time_beg;
+	m_debugFileStream << "nextNalu " << time_diff << endl;
+#endif
 
 	return Success;
 }
@@ -187,6 +205,9 @@ STATUS H264Analysis::nextNalu(int *naluPos)
 //************************************
 size_t H264Analysis::next_SPS_Nalu( char **naluData )
 {
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
 	int startCodeLen = 0;
 	int curNaluPos = 0;
 	int curNaluDataPos = 0;
@@ -195,17 +216,24 @@ size_t H264Analysis::next_SPS_Nalu( char **naluData )
 	while (nextNalu())
 	{
 		startCodeLen = skipNaluStartCode();	///< 跳过startCode
-		curNaluDataPos = m_stream->ptr - m_stream->buf;	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
-		curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
+		//curNaluDataPos = m_fileStream.tellg();	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
+		//curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
 		if (readNextByte((char*)&nextByte) == Failed)
 			return Failed;
 		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
 		if (nal_unit_type == NAL_SPS)
 		{
-			m_stream->ptr = m_stream->buf + curNaluPos;
-			return readNaluData(naluData);
+			//m_stream->ptr = m_stream->buf + curNaluPos;
+			m_fileStream.seekg(-startCodeLen - 1, ios::cur);
+			size_t len = readNaluData(naluData);
 		}
 	}
+
+#ifdef TIME_TEST
+	DWORD time_diff = GetTickCount() - time_beg;
+	m_debugFileStream << "next_SPS_Nalu " << time_diff << endl;
+#endif
+
 	return Failed;
 }
 
@@ -220,6 +248,9 @@ size_t H264Analysis::next_SPS_Nalu( char **naluData )
 //************************************
 size_t H264Analysis::next_PPS_Nalu( char **naluData )
 {
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
 	int startCodeLen = 0;
 	int curNaluPos = 0;
 	int curNaluDataPos = 0;
@@ -228,17 +259,25 @@ size_t H264Analysis::next_PPS_Nalu( char **naluData )
 	while (nextNalu())
 	{
 		startCodeLen = skipNaluStartCode();	///< 跳过startCode
-		curNaluDataPos = m_stream->ptr - m_stream->buf;	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
-		curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
+		//curNaluDataPos = m_fileStream.tellg();	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
+		//curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
 		if (readNextByte((char*)&nextByte) == Failed)
 			return Failed;
 		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
 		if (nal_unit_type == NAL_PPS)
 		{
-			m_stream->ptr = m_stream->buf + curNaluPos;
-			return readNaluData(naluData);
+			//m_stream->ptr = m_stream->buf + curNaluPos;
+			m_fileStream.seekg(-startCodeLen - 1, ios::cur);
+
+			size_t len = readNaluData(naluData);
+#ifdef TIME_TEST
+			DWORD time_diff = GetTickCount() - time_beg;
+			m_debugFileStream << "next_PPS_Nalu " << time_diff << endl;
+#endif
+			return len;
 		}
 	}
+
 	return Failed;
 }
 
@@ -253,6 +292,9 @@ size_t H264Analysis::next_PPS_Nalu( char **naluData )
 //************************************
 size_t H264Analysis::next_I_Nalu( char **naluData )
 {
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
 	int startCodeLen = 0;
 	int curNaluPos = 0;
 	int curNaluDataPos = 0;
@@ -264,8 +306,8 @@ size_t H264Analysis::next_I_Nalu( char **naluData )
 	while (nextNalu())
 	{
 		startCodeLen = skipNaluStartCode();	///< 跳过startCode
-		curNaluDataPos = m_stream->ptr - m_stream->buf;	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
-		curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
+		//curNaluDataPos = m_fileStream.tellg();	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
+		curNaluPos = (int)m_fileStream.tellg() - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
 		if (readNextByte((char*)&nextByte) == Failed)
 			return Failed;
 		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
@@ -276,8 +318,16 @@ size_t H264Analysis::next_I_Nalu( char **naluData )
 
 			if (slice_type == SLICE_TYPE_I1 || slice_type == SLICE_TYPE_I2)
 			{
-				m_stream->ptr = m_stream->buf + curNaluPos;
-				return readNaluData(naluData);
+				//m_stream->ptr = m_stream->buf + curNaluPos;
+				m_fileStream.seekg(curNaluPos);
+				size_t len =  readNaluData(naluData);
+
+#ifdef TIME_TEST
+				DWORD time_diff = GetTickCount() - time_beg;
+				m_debugFileStream << "next_I_Nalu " << time_diff << endl;
+#endif
+
+				return len;
 			}
 		}
 	}
@@ -295,6 +345,9 @@ size_t H264Analysis::next_I_Nalu( char **naluData )
 //************************************
 size_t H264Analysis::next_P_Nalu( char **naluData )
 {
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
 	int startCodeLen = 0;
 	int curNaluPos = 0;
 	int curNaluDataPos = 0;
@@ -305,8 +358,8 @@ size_t H264Analysis::next_P_Nalu( char **naluData )
 	while (nextNalu())
 	{
 		startCodeLen = skipNaluStartCode();	///< 跳过startCode
-		curNaluDataPos = m_stream->ptr - m_stream->buf;	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
-		curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
+		//curNaluDataPos = m_fileStream.tellg();	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
+		curNaluPos = (int)m_fileStream.tellg() - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
 		if (readNextByte((char*)&nextByte) == Failed)
 			return Failed;
 		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
@@ -317,8 +370,16 @@ size_t H264Analysis::next_P_Nalu( char **naluData )
 
 			if (slice_type == SLICE_TYPE_P1 || slice_type == SLICE_TYPE_P2)
 			{
-				m_stream->ptr = m_stream->buf + curNaluPos;
-				return readNaluData(naluData);
+				//m_stream->ptr = m_stream->buf + curNaluPos;
+				m_fileStream.seekg(curNaluPos);
+				size_t len = readNaluData(naluData);
+
+#ifdef TIME_TEST
+				DWORD time_diff = GetTickCount() - time_beg;
+				m_debugFileStream << "next_P_Nalu " << time_diff << endl;
+#endif
+
+				return len;
 			}
 		}
 	}
@@ -336,6 +397,9 @@ size_t H264Analysis::next_P_Nalu( char **naluData )
 //************************************
 size_t H264Analysis::next_B_Nalu( char **naluData )
 {
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
 	int startCodeLen = 0;
 	int curNaluPos = 0;
 	int curNaluDataPos = 0;
@@ -346,8 +410,8 @@ size_t H264Analysis::next_B_Nalu( char **naluData )
 	while (nextNalu())
 	{
 		startCodeLen = skipNaluStartCode();	///< 跳过startCode
-		curNaluDataPos = m_stream->ptr - m_stream->buf;	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
-		curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
+		//curNaluDataPos = m_fileStream.tellg();	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
+		curNaluPos = (int)m_fileStream.tellg() - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
 		if (readNextByte((char*)&nextByte) == Failed)
 			return Failed;
 		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
@@ -358,8 +422,16 @@ size_t H264Analysis::next_B_Nalu( char **naluData )
 
 			if (slice_type == SLICE_TYPE_B1 || slice_type == SLICE_TYPE_B2)
 			{
-				m_stream->ptr = m_stream->buf + curNaluPos;
-				return readNaluData(naluData);
+				//m_stream->ptr = m_stream->buf + curNaluPos;
+				m_fileStream.seekg(curNaluPos);
+				size_t len = readNaluData(naluData);
+
+#ifdef TIME_TEST
+				DWORD time_diff = GetTickCount() - time_beg;
+				m_debugFileStream << "next_B_Nalu " << time_diff << endl;
+#endif
+
+				return len;
 			}
 		}
 	}
@@ -377,6 +449,9 @@ size_t H264Analysis::next_B_Nalu( char **naluData )
 //************************************
 size_t H264Analysis::next_SI_Nalu( char **naluData )
 {
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
 	int startCodeLen = 0;
 	int curNaluPos = 0;
 	int curNaluDataPos = 0;
@@ -387,8 +462,8 @@ size_t H264Analysis::next_SI_Nalu( char **naluData )
 	while (nextNalu())
 	{
 		startCodeLen = skipNaluStartCode();	///< 跳过startCode
-		curNaluDataPos = m_stream->ptr - m_stream->buf;	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
-		curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
+		//curNaluDataPos = m_fileStream.tellg();	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
+		curNaluPos = (int)m_fileStream.tellg() - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
 		if (readNextByte((char*)&nextByte) == Failed)
 			return Failed;
 		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
@@ -399,8 +474,16 @@ size_t H264Analysis::next_SI_Nalu( char **naluData )
 
 			if (slice_type == SLICE_TYPE_SI1 || slice_type == SLICE_TYPE_SI2)
 			{
-				m_stream->ptr = m_stream->buf + curNaluPos;
-				return readNaluData(naluData);
+				//m_stream->ptr = m_stream->buf + curNaluPos;
+				m_fileStream.seekg(curNaluPos);
+				size_t len = readNaluData(naluData);
+
+#ifdef TIME_TEST
+				DWORD time_diff = GetTickCount() - time_beg;
+				m_debugFileStream << "next_SI_Nalu " << time_diff << endl;
+#endif
+
+				return len;
 			}
 		}
 	}
@@ -418,6 +501,9 @@ size_t H264Analysis::next_SI_Nalu( char **naluData )
 //************************************
 size_t H264Analysis::next_SP_Nalu( char **naluData )
 {
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
 	int startCodeLen = 0;
 	int curNaluPos = 0;
 	int curNaluDataPos = 0;
@@ -428,8 +514,8 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 	while (nextNalu())
 	{
 		startCodeLen = skipNaluStartCode();	///< 跳过startCode
-		curNaluDataPos = m_stream->ptr - m_stream->buf;	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
-		curNaluPos = curNaluDataPos - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
+		//curNaluDataPos = m_fileStream.tellg();	///< 获取当前Nalu数据部分的起始位置(不包含startCode)
+		curNaluPos = (int)m_fileStream.tellg() - startCodeLen;	///< 获取当前Nalu的起始位置(包含startCode)
 		if (readNextByte((char*)&nextByte) == Failed)
 			return Failed;
 		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
@@ -440,8 +526,16 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 
 			if (slice_type == SLICE_TYPE_SP1 || slice_type == SLICE_TYPE_SP2)
 			{
-				m_stream->ptr = m_stream->buf + curNaluPos;
-				return readNaluData(naluData);
+				//m_stream->ptr = m_stream->buf + curNaluPos;
+				m_fileStream.seekg(curNaluPos);
+				size_t len = readNaluData(naluData);
+
+#ifdef TIME_TEST
+				DWORD time_diff = GetTickCount() - time_beg;
+				m_debugFileStream << "next_SP_Nalu " << time_diff << endl;
+#endif
+
+				return len;
 			}
 		}
 	}
@@ -460,11 +554,21 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 //************************************
 STATUS H264Analysis::skipTo( short int persent )
 {
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
+
 	if (persent < 0 || persent > 100)
 		return Failed;
 
-	size_t pos = m_stream->len * persent * 0.01;
-	m_stream->ptr = m_stream->buf + pos;
+	size_t pos = m_len * persent * 0.01;
+	m_fileStream.seekg(pos);
+
+#ifdef TIME_TEST
+	DWORD time_diff = GetTickCount() - time_beg;
+	m_debugFileStream << "skipTo " << time_diff << endl;
+#endif
+
 	return Success;
 }
 
@@ -479,15 +583,19 @@ STATUS H264Analysis::skipTo( short int persent )
 //************************************
 size_t H264Analysis::skipNaluStartCode()
 {
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
 	int len = 0;
 	char *p = new char[4];
-	int curNaluPos = m_stream->ptr - m_stream->buf;
+	int curNaluPos = m_fileStream.tellg();
 	if (readNextBytes(&p, 4) == Failed)
 		return Failed;
 	if (p[0] == 0x00 && p[1] == 0x00 && p[2] == 0x01)
 	{
 		len = 3;
-		m_stream->ptr = m_stream->buf + curNaluPos + 3;
+		//m_stream->ptr = m_stream->buf + curNaluPos + 3;
+		m_fileStream.seekg(-1, ios::cur);
 	}
 	else if (p[0] == 0x00 && p[1] == 0x00 && p[2] == 0x00 && p[3] == 0x01)
 	{
@@ -497,8 +605,13 @@ size_t H264Analysis::skipNaluStartCode()
 
 	if (len == 0)
 	{
-		m_stream->ptr = m_stream->buf + curNaluPos;
+		m_fileStream.seekg(-4, ios::cur);
 	}
+
+#ifdef TIME_TEST
+	DWORD time_diff = GetTickCount() - time_beg;
+	m_debugFileStream << "skipNaluStartCode " << time_diff << endl;
+#endif
 
 	return len;
 }
@@ -516,15 +629,25 @@ size_t H264Analysis::skipNaluStartCode()
 //************************************
 STATUS H264Analysis::readNextBytes( char **p, int len)
 {
-	if (len <= 0 || m_stream->ptr - m_stream->buf + len > m_stream->len)
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
+	if (len <= 0 || (int)m_fileStream.tellg() + len > m_len)
 	{
 		return Failed;
 	}
 
 	*p = new char[len];
-	char *c = *p;
-	while(len--)
-		*c++ = *m_stream->ptr++;
+	m_fileStream.read(*p, len);
+// 	char *c = *p;
+// 	while(len--)
+// 		*c++ = *m_stream->ptr++;
+// 		
+#ifdef TIME_TEST
+	DWORD time_diff = GetTickCount() - time_beg;
+	m_debugFileStream << "readNextBytes " << time_diff << endl;
+#endif
+
 	return Success;
 }
 
@@ -540,12 +663,21 @@ STATUS H264Analysis::readNextBytes( char **p, int len)
 //************************************
 STATUS H264Analysis::readNextByte( char *c )
 {
-	if (m_stream->ptr - m_stream->buf >= m_stream->len)
+// #ifdef TIME_TEST
+// 	DWORD time_beg = GetTickCount();
+// #endif
+	if (m_fileStream.tellg() >= m_len)
 	{
 		return Failed;
 	}
 
-	*c = *m_stream->ptr++;
+	m_fileStream.read(c, 1);
+	//*c = *m_stream->ptr++;
+
+// #ifdef TIME_TEST
+// 	DWORD time_diff = GetTickCount() - time_beg;
+// 	m_debugFileStream << "readNextByte " << time_diff << endl;
+// #endif
 
 	return Success;
 }
@@ -562,18 +694,21 @@ STATUS H264Analysis::readNextByte( char *c )
 //************************************
 STATUS H264Analysis::ueDecode(UINT32 *codeNum)
 {
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
 	int leadingZeroBits = -1;
 	for (char b = 0; !b; leadingZeroBits++)
 	{
-		if (m_stream->binPos == 0)
+		if (m_binPos == 0)
 		{
-			if (readNextByte((char*)&m_stream->lastByte) == Failed)
+			if (readNextByte((char*)&m_lastByte) == Failed)
 				return Failed;
 		}
-		b = B8_VAL_BASE_R(m_stream->lastByte, m_stream->binPos, 1);	// read next bit
-		m_stream->binPos++;	// 指针下移
-		if (m_stream->binPos % 8 == 0)
-			m_stream->binPos = 0;
+		b = B8_VAL_BASE_R(m_lastByte, m_binPos, 1);	// read next bit
+		m_binPos++;	// 指针下移
+		if (m_binPos % 8 == 0)
+			m_binPos = 0;
 	}
 
 	if (leadingZeroBits > 32)
@@ -584,9 +719,9 @@ STATUS H264Analysis::ueDecode(UINT32 *codeNum)
 
 	// 指针还有剩余位置未读
 	int readBits = 0;
-	int leftBits = 8 - m_stream->binPos;
+	int leftBits = 8 - m_binPos;
 	int leadingZeroBytes = 0;
-	if (m_stream->binPos != 0)
+	if (m_binPos != 0)
 	{
 		if (leadingZeroBits == 0)
 		{
@@ -596,7 +731,7 @@ STATUS H264Analysis::ueDecode(UINT32 *codeNum)
 		{
 			if (leadingZeroBits <= leftBits)	// 剩余位置足够满足哥伦布解码
 			{
-				readBits = B8_VAL_BASE_R(m_stream->lastByte, m_stream->binPos, leadingZeroBits);
+				readBits = B8_VAL_BASE_R(m_lastByte, m_binPos, leadingZeroBits);
 			}
 			else	// 剩余位置不够满足哥伦布解码
 			{
@@ -611,16 +746,16 @@ STATUS H264Analysis::ueDecode(UINT32 *codeNum)
 
 				// 提取完整的Exp-Golomb-Code
 				golombCode &= B32_VAL_MASK(0, leftLeadingZeroBits);
-				golombCode = (golombCode>>leftBits)|(B32_VAL_BASE_L((UINT32)B8_VAL_BASE_L(m_stream->lastByte, m_stream->binPos), 24));
+				golombCode = (golombCode>>leftBits)|(B32_VAL_BASE_L((UINT32)B8_VAL_BASE_L(m_lastByte, m_binPos), 24));
 				golombCode = B32_VAL_BASE_R(golombCode, 0, leadingZeroBits);
 				*codeNum = golombCode;
 
 				// 存放最后字节
-				m_stream->lastByte = p[leftLeadingZeroBytes-1];
+				m_lastByte = p[leftLeadingZeroBytes-1];
 				delete [] p;
 			}
-			m_stream->binPos += leadingZeroBits;
-			m_stream->binPos %= 8;
+			m_binPos += leadingZeroBits;
+			m_binPos %= 8;
 			*codeNum = pow(2.0, leadingZeroBits) - 1 + readBits;
 		}
 	}
@@ -646,14 +781,20 @@ STATUS H264Analysis::ueDecode(UINT32 *codeNum)
 			*codeNum = golombCode;
 
 			// 存放最后字节
-			m_stream->lastByte = p[leadingZeroBytes-1];
+			m_lastByte = p[leadingZeroBytes-1];
 			delete [] p;
 
-			m_stream->binPos += leadingZeroBits;
-			m_stream->binPos %= 8;
+			m_binPos += leadingZeroBits;
+			m_binPos %= 8;
 			*codeNum = pow(2.0, leadingZeroBits) - 1 + readBits;
 		}
 	}
+
+#ifdef TIME_TEST
+	DWORD time_diff = GetTickCount() - time_beg;
+	m_debugFileStream << "ueDecode " << time_diff << endl;
+#endif
+
 	return Success;
 }
 

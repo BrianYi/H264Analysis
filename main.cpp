@@ -17,13 +17,13 @@ int main()
 void H264AnalysisDebug()
 {
 	H264Analysis h264Analysis;
-	DataStream *dataStream = h264Analysis.getStream(g_fileNameStr);
+	ifstream& fileStream = h264Analysis.getOpenFile(g_fileNameStr);
 	int pCount = 0, bCount = 0, iCount = 0, siCount = 0, spCount = 0, spsCount = 0, ppsCount = 0, seiCount = 0, audCount = 0;
 	int pSize = 0, bSize = 0, iSize = 0, siSize = 0, spSize = 0, spsSize = 0, ppsSize = 0, seiSize = 0, audSize = 0;
 	int NaluCount = 0;
 	int NaluSize = 0;
 	int NaluTotalSize = 0;
-	h264Analysis.skipTo(99);
+	//h264Analysis.skipTo(99);
 	while (h264Analysis.nextNalu())
 	{
 		unsigned char nextByte = 0;
@@ -130,108 +130,109 @@ void H264AnalysisDebug()
 	cout << "------------------------------" << endl;
 
 	
-	pCount = 0, bCount = 0, iCount = 0, siCount = 0, spCount = 0, spsCount = 0, ppsCount = 0, seiCount = 0, audCount = 0;
-	pSize = 0, bSize = 0, iSize = 0, siSize = 0, spSize = 0, spsSize = 0, ppsSize = 0, seiSize = 0, audSize = 0;
-	NaluCount = 0;
-	NaluSize = 0;
-	NaluTotalSize = 0;
-	
-
-	cout << "------------------------------" << endl;
-	cout << left << setprecision(6) <<  setiosflags(ios::fixed);
-	cout << setw(10) << "Category" << setw(10) << "Number" << setw(10) << "Size(MB)" << endl;
-	cout << "------------------------------" << endl;
-	dataStream->ptr = dataStream->buf;
-	dataStream->binPos = 0;
-	dataStream->lastByte = 0;
-	while (h264Analysis.nextNalu())
-	{
-		NaluSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
-		NaluCount++;
-	}
-	cout << setw(10) << "NALU" << setw(10) << NaluCount << setw(10) << (float)NaluSize/1024/1024 << endl;
-	
-	dataStream->ptr = dataStream->buf;
-	dataStream->binPos = 0;
-	dataStream->lastByte = 0;
-	while (h264Analysis.next_P_Nalu())
-	{
-		pSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
-		pCount++;
-	}
-	cout << setw(10) << "P" << setw(10) << pCount << setw(10) << (float)pSize/1024/1024 << endl;
-	
-	dataStream->ptr = dataStream->buf;
-	dataStream->binPos = 0;
-	dataStream->lastByte = 0;
-	while (h264Analysis.next_B_Nalu())
-	{
-		bSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
-		bCount++;
-	}
-	cout << setw(10) << "B" << setw(10) << bCount << setw(10) << (float)bSize/1024/1024 << endl;
-	
-	dataStream->ptr = dataStream->buf;
-	dataStream->binPos = 0;
-	dataStream->lastByte = 0;
-	while (h264Analysis.next_I_Nalu())
-	{
-		iSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
-		iCount++;
-	}
-	cout << setw(10) << "I" << setw(10) << iCount << setw(10) << (float)iSize/1024/1024 << endl;
-	
-	dataStream->ptr = dataStream->buf;
-	dataStream->binPos = 0;
-	dataStream->lastByte = 0;
-	while (h264Analysis.next_SI_Nalu())
-	{
-		siSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
-		siCount++;
-	}
-	cout << setw(10) << "SI" << setw(10) << siCount << setw(10) << (float)siSize/1024/1024 << endl;
-	
-	dataStream->ptr = dataStream->buf;
-	dataStream->binPos = 0;
-	dataStream->lastByte = 0;
-	while (h264Analysis.next_SP_Nalu())
-	{
-		spSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
-		spCount++;
-	}
-	cout << setw(10) << "SP" << setw(10) << spCount << setw(10) << (float)spSize/1024/1024 << endl;
-	
-	dataStream->ptr = dataStream->buf;	
-	dataStream->binPos = 0;
-	dataStream->lastByte = 0;
-	while (h264Analysis.next_SPS_Nalu())
-	{
-		spsSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
-		spsCount++;
-	}
-	cout << setw(10) << "SPS" << setw(10) << spsCount << setw(10) << (float)spsSize/1024/1024 << endl;
-	
-	dataStream->ptr = dataStream->buf;	
-	dataStream->binPos = 0;
-	dataStream->lastByte = 0;
-	while (h264Analysis.next_PPS_Nalu())
-	{
-		ppsSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
-		ppsCount++;
-	}
-	cout << setw(10) << "PPS" << setw(10) << ppsCount << setw(10) << (float)ppsSize/1024/1024 << endl;
-// 	cout << setw(10) << "SEI" << setw(10) << seiCount << setw(10) << (float)seiSize/1024/1024 << endl;
-// 	cout << setw(10) << "AUD" << setw(10) << audCount << setw(10) << (float)audSize/1024/1024 << endl;
-	cout << "------------------------------" << endl;
-
-	h264Analysis.clearStream();
+// 	pCount = 0, bCount = 0, iCount = 0, siCount = 0, spCount = 0, spsCount = 0, ppsCount = 0, seiCount = 0, audCount = 0;
+// 	pSize = 0, bSize = 0, iSize = 0, siSize = 0, spSize = 0, spsSize = 0, ppsSize = 0, seiSize = 0, audSize = 0;
+// 	NaluCount = 0;
+// 	NaluSize = 0;
+// 	NaluTotalSize = 0;
+// 	
+// 
+// 	cout << "------------------------------" << endl;
+// 	cout << left << setprecision(6) <<  setiosflags(ios::fixed);
+// 	cout << setw(10) << "Category" << setw(10) << "Number" << setw(10) << "Size(MB)" << endl;
+// 	cout << "------------------------------" << endl;
+// 	//fileStream.seekg(0, ios::beg);
+// 	fileStream.seekg(0, ios::beg);
+// 	h264Analysis.m_binPos = 0;
+// 	h264Analysis.m_lastByte = 0;
+// 	while (h264Analysis.nextNalu())
+// 	{
+// 		NaluSize += h264Analysis.readNaluData();
+// 		h264Analysis.skipNaluStartCode();
+// 		NaluCount++;
+// 	}
+// 	cout << setw(10) << "NALU" << setw(10) << NaluCount << setw(10) << (float)NaluSize/1024/1024 << endl;
+// 	
+// 	fileStream.seekg(0, ios::beg);
+// 	h264Analysis.m_binPos = 0;
+// 	h264Analysis.m_lastByte = 0;
+// 	while (h264Analysis.next_P_Nalu())
+// 	{
+// 		pSize += h264Analysis.readNaluData();
+// 		h264Analysis.skipNaluStartCode();
+// 		pCount++;
+// 	}
+// 	cout << setw(10) << "P" << setw(10) << pCount << setw(10) << (float)pSize/1024/1024 << endl;
+// 	
+// 	fileStream.seekg(0, ios::beg);
+// 	h264Analysis.m_binPos = 0;
+// 	h264Analysis.m_lastByte = 0;
+// 	while (h264Analysis.next_B_Nalu())
+// 	{
+// 		bSize += h264Analysis.readNaluData();
+// 		h264Analysis.skipNaluStartCode();
+// 		bCount++;
+// 	}
+// 	cout << setw(10) << "B" << setw(10) << bCount << setw(10) << (float)bSize/1024/1024 << endl;
+// 	
+// 	fileStream.seekg(0, ios::beg);
+// 	h264Analysis.m_binPos = 0;
+// 	h264Analysis.m_lastByte = 0;
+// 	while (h264Analysis.next_I_Nalu())
+// 	{
+// 		iSize += h264Analysis.readNaluData();
+// 		h264Analysis.skipNaluStartCode();
+// 		iCount++;
+// 	}
+// 	cout << setw(10) << "I" << setw(10) << iCount << setw(10) << (float)iSize/1024/1024 << endl;
+// 	
+// 	fileStream.seekg(0, ios::beg);
+// 	h264Analysis.m_binPos = 0;
+// 	h264Analysis.m_lastByte = 0;
+// 	while (h264Analysis.next_SI_Nalu())
+// 	{
+// 		siSize += h264Analysis.readNaluData();
+// 		h264Analysis.skipNaluStartCode();
+// 		siCount++;
+// 	}
+// 	cout << setw(10) << "SI" << setw(10) << siCount << setw(10) << (float)siSize/1024/1024 << endl;
+// 	
+// 	fileStream.seekg(0, ios::beg);
+// 	h264Analysis.m_binPos = 0;
+// 	h264Analysis.m_lastByte = 0;
+// 	while (h264Analysis.next_SP_Nalu())
+// 	{
+// 		spSize += h264Analysis.readNaluData();
+// 		h264Analysis.skipNaluStartCode();
+// 		spCount++;
+// 	}
+// 	cout << setw(10) << "SP" << setw(10) << spCount << setw(10) << (float)spSize/1024/1024 << endl;
+// 	
+// 	fileStream.seekg(0, ios::beg);	
+// 	h264Analysis.m_binPos = 0;
+// 	h264Analysis.m_lastByte = 0;
+// 	while (h264Analysis.next_SPS_Nalu())
+// 	{
+// 		spsSize += h264Analysis.readNaluData();
+// 		h264Analysis.skipNaluStartCode();
+// 		spsCount++;
+// 	}
+// 	cout << setw(10) << "SPS" << setw(10) << spsCount << setw(10) << (float)spsSize/1024/1024 << endl;
+// 	
+// 	fileStream.seekg(0, ios::beg);	
+// 	h264Analysis.m_binPos = 0;
+// 	h264Analysis.m_lastByte = 0;
+// 	while (h264Analysis.next_PPS_Nalu())
+// 	{
+// 		ppsSize += h264Analysis.readNaluData();
+// 		h264Analysis.skipNaluStartCode();
+// 		ppsCount++;
+// 	}
+// 	cout << setw(10) << "PPS" << setw(10) << ppsCount << setw(10) << (float)ppsSize/1024/1024 << endl;
+// // 	cout << setw(10) << "SEI" << setw(10) << seiCount << setw(10) << (float)seiSize/1024/1024 << endl;
+// // 	cout << setw(10) << "AUD" << setw(10) << audCount << setw(10) << (float)audSize/1024/1024 << endl;
+// 	cout << "------------------------------" << endl;
+// 
+	h264Analysis.closeFile();
 	
 }
