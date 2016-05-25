@@ -26,31 +26,37 @@ void H264AnalysisDebug()
 
 	//h264Analysis.skipTo(99);
 	DWORD timeTotal_beg = GetTickCount();
-	while (h264Analysis.nextNalu())
+
+	char *naluData = NULL;
+	while (NaluSize = h264Analysis.nextNalu(&naluData))
 	{
-		//if (NaluCount == 1748)
-		//	NaluCount = NaluCount;
-		unsigned char nextByte = 0;
-		if(!(NaluSize = h264Analysis.readNaluData()) || !h264Analysis.skipNaluStartCode() || !h264Analysis.readNextByte((char*)&nextByte))
-			break;
-		
 		NaluCount++;
 		NaluTotalSize += NaluSize;
+		int startCodeLen = h264Analysis.scLen(naluData);
+		unsigned char nextByte = naluData[startCodeLen];
 		UINT32 forbidden_zero_bit = B8_VAL_BASE_R(nextByte, 0, 1);
 		UINT32 nal_ref_idc = B8_VAL_BASE_R(nextByte, 1, 2);
 		UINT32 nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
 		UINT32 first_mb_in_slice = 0;
 		UINT32 slice_type = 0;
 		UINT32 pic_parameter_set_id = 0;
+		unsigned int egcDataPos = startCodeLen + 1;
+		unsigned int egcDataLen = NaluSize - egcDataPos;
+		unsigned int egcSize = 0;
 		int len = 0;
 		switch (nal_unit_type)
 		{
 		case NAL_SLICE:
 		case NAL_IDR_SLICE:
 		case NAL_AUXILIARY_SLICE:
-			if (!h264Analysis.ueDecode(&first_mb_in_slice) || 
-				!h264Analysis.ueDecode(&slice_type))
+//			if (!h264Analysis.ueDecode(NULL, 0, &first_mb_in_slice) || 
+//				!h264Analysis.ueDecode(NULL, 0, &slice_type))
+			if (h264Analysis.ueDecode(&naluData[egcDataPos], egcDataLen, &first_mb_in_slice, &egcSize) == H264Analysis::Failed)
 				break;
+			if (h264Analysis.ueDecode(&naluData[egcDataPos + egcSize], egcDataLen - egcSize, &slice_type, &egcSize) == H264Analysis::Failed)
+				break;
+			h264Analysis.m_binPos = 0;
+			h264Analysis.m_lastByte = 0;
 
 			switch (slice_type)
 			{
@@ -116,6 +122,9 @@ void H264AnalysisDebug()
 		default:
 			break;
 		}
+
+		delete [] naluData;
+		naluData = NULL;
 	}
 	DWORD timeTotal_diff = GetTickCount() - timeTotal_beg;
 	cout << "------------------------------" << endl;
@@ -141,8 +150,7 @@ void H264AnalysisDebug()
 	NaluCount = 0;
 	NaluSize = 0;
 	NaluTotalSize = 0;
-	
-
+	/*
 	cout << "------------------------------------------" << endl;
 	cout << left << setprecision(6) <<  setiosflags(ios::fixed);
 	cout << setw(10) << "Category" << setw(10) << "Number" << setw(12) << "Size(MB)" << setw(10) << "Time(ms)" << endl;
@@ -153,23 +161,21 @@ void H264AnalysisDebug()
 	h264Analysis.m_lastByte = 0;
 	DWORD time_beg = GetTickCount();
 	timeTotal_beg = time_beg;
-	while (h264Analysis.nextNalu())
+	while (NaluSize = h264Analysis.nextNalu())
 	{
-		NaluSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
+		NaluTotalSize += NaluSize;
 		NaluCount++;
 	}
 	DWORD time_diff = GetTickCount() - time_beg;
-	cout << setw(10) << "NALU" << setw(10) << NaluCount << setw(12) << (float)NaluSize/1024/1024 << setw(10) << time_diff << endl;
+	cout << setw(10) << "NALU" << setw(10) << NaluCount << setw(12) << (float)NaluTotalSize/1024/1024 << setw(10) << time_diff << endl;
 	
 	fileStream.seekg(0, ios::beg);
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
-	while (h264Analysis.next_P_Nalu())
+	while (NaluSize = h264Analysis.next_P_Nalu())
 	{
-		pSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
+		pSize += NaluSize;
 		pCount++;
 	}
 	time_diff = GetTickCount() - time_beg;
@@ -179,10 +185,9 @@ void H264AnalysisDebug()
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
-	while (h264Analysis.next_B_Nalu())
+	while (NaluSize = h264Analysis.next_B_Nalu())
 	{
-		bSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
+		bSize += NaluSize;
 		bCount++;
 	}
 	time_diff = GetTickCount() - time_beg;
@@ -192,10 +197,9 @@ void H264AnalysisDebug()
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
-	while (h264Analysis.next_I_Nalu())
+	while (NaluSize = h264Analysis.next_I_Nalu())
 	{
-		iSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
+		iSize += NaluSize;
 		iCount++;
 	}
 	time_diff = GetTickCount() - time_beg;
@@ -205,10 +209,9 @@ void H264AnalysisDebug()
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
-	while (h264Analysis.next_SI_Nalu())
+	while (NaluSize = h264Analysis.next_SI_Nalu())
 	{
-		siSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
+		siSize += NaluSize;
 		siCount++;
 	}
 	time_diff = GetTickCount() - time_beg;
@@ -218,10 +221,9 @@ void H264AnalysisDebug()
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
-	while (h264Analysis.next_SP_Nalu())
+	while (NaluSize = h264Analysis.next_SP_Nalu())
 	{
-		spSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
+		spSize += NaluSize;
 		spCount++;
 	}
 	time_diff = GetTickCount() - time_beg;
@@ -231,10 +233,9 @@ void H264AnalysisDebug()
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
-	while (h264Analysis.next_SPS_Nalu())
+	while (NaluSize = h264Analysis.next_SPS_Nalu())
 	{
-		spsSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
+		spsSize += NaluSize;
 		spsCount++;
 	}
 	time_diff = GetTickCount() - time_beg;
@@ -244,10 +245,9 @@ void H264AnalysisDebug()
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
-	while (h264Analysis.next_PPS_Nalu())
+	while (NaluSize = h264Analysis.next_PPS_Nalu())
 	{
-		ppsSize += h264Analysis.readNaluData();
-		h264Analysis.skipNaluStartCode();
+		ppsSize += NaluSize;
 		ppsCount++;
 	}
 	time_diff = GetTickCount() - time_beg;
@@ -256,8 +256,7 @@ void H264AnalysisDebug()
 	cout << "×ÜºÄÊ±: " << timeTotal_diff << " ms" << endl;
 // 	cout << setw(10) << "SEI" << setw(10) << seiCount << setw(10) << (float)seiSize/1024/1024 << endl;
 // 	cout << setw(10) << "AUD" << setw(10) << audCount << setw(10) << (float)audSize/1024/1024 << endl;
-	cout << "------------------------------------------" << endl;
-
+	cout << "------------------------------------------" << endl;*/
 	h264Analysis.closeFile();
 	
 }

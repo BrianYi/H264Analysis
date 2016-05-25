@@ -41,7 +41,7 @@ enum SliceType {
 };
 
 typedef int STATUS;	// 返回状态 ( 0 => Failed, 1 => Success)
-const size_t BUFSIZE = 1024 * 1024;	// 一次读取的字节数
+const size_t BUFSIZE = 10 * 1024 * 1024;	// 一次读取的字节数
 
 //
 // 流结构
@@ -49,7 +49,7 @@ const size_t BUFSIZE = 1024 * 1024;	// 一次读取的字节数
 typedef struct { 
 	char *buf;			///< 流数据缓存区
 	unsigned int len;	///< 流数据长度
-	char *ptr;			///< 流数据指针
+	unsigned int pos;	///< 流数据指针当前位置
 	unsigned int tellgBase;	///< 缓冲区块在文件流中的位置
 } DataStream, *PDataStream;	
 
@@ -63,7 +63,6 @@ typedef struct {
 	 * 未完成
 	 */
 }SPS, *PSPS;
-
 
 
 //
