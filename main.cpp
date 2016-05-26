@@ -1,6 +1,6 @@
 #include "H264Analysis/H264Analysis.h"
 #include <string>
-const string g_fileNameStr = "../movie/264.h264";
+const string g_fileNameStr = "../movie/500MTest.h264";
 
 void H264AnalysisDebug();	// ²âÊÔº¯Êý
 
@@ -49,8 +49,6 @@ void H264AnalysisDebug()
 		case NAL_SLICE:
 		case NAL_IDR_SLICE:
 		case NAL_AUXILIARY_SLICE:
-//			if (!h264Analysis.ueDecode(NULL, 0, &first_mb_in_slice) || 
-//				!h264Analysis.ueDecode(NULL, 0, &slice_type))
 			if (h264Analysis.ueDecode(&naluData[egcDataPos], egcDataLen, &first_mb_in_slice, &egcSize) == H264Analysis::Failed)
 				break;
 			if (h264Analysis.ueDecode(&naluData[egcDataPos + egcSize], egcDataLen - egcSize, &slice_type, &egcSize) == H264Analysis::Failed)

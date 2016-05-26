@@ -10,7 +10,7 @@
 #include "H264PublicDef.h"
 using namespace std;
 
-//#define TIME_TEST
+//#define TIME_TEST // 统计每个函数的运行时间，测试用
 
 class H264Analysis
 {
@@ -97,13 +97,6 @@ public:
 	STATUS skipTo(short int persent);
 public:
 	/**
-	 * 描述:	读取Nalu，完成后文件指针指向下一个Nalu的开头
-	 * 返回值:	size_t => Nalu长度（包含startCode）
-	 * 参数: 	char * naluData(out: 返回Nalu, 为空时不获取数据)
-	 */
-	//size_t readNaluData(char *naluData = NULL);
-
-	/**
 	 * 描述:	返回startCode长度
 	 * 返回值:	size_t => startCode长度
 	 * 参数: 	char * p
@@ -117,13 +110,6 @@ public:
 	 * 参数: 	int len(in: 读取字节的长度)
 	 */
 	size_t readNextBytes(char *p, int len);///< 读取len个字节
-
-	/**
-	 * 描述:	读取接下来的1个字节
-	 * 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
-	 * 参数: 	char * c(out: 传出字节数据)
-	 */
-	//STATUS readNextByte(char *c);	///< 读取下一个字节
 
 	/**
 	 * 描述:	解码Exp-Golomb-Code(指数哥伦布编码)
@@ -141,9 +127,8 @@ public:
 	 */
 	STATUS checkStreamBuf();
 public:
-	//DataStream *m_stream;	///< 数据流
 	ifstream m_fileStream;	///< 文件流
-	unsigned int m_len;	///< 流数据长度
+	size_t m_len;	///< 流数据长度
 	char m_binPos;		///< 二进制指针的位置, 始终指向要读的下一位(8位, 从0开始, 值为0~7)
 	UINT8 m_lastByte;		///< 最后一次读的字节内容
 	PDataStream m_pStreamBuf;	///< 
