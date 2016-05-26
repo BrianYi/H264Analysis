@@ -95,7 +95,7 @@ public:
 	 * 参数: 	short int persent(in: 0~100, 传入要跳转的百分比)
 	 */
 	STATUS skipTo(short int persent);
-public:
+public: // 当测试完毕后，需改为protected
 	/**
 	 * 描述:	返回startCode长度
 	 * 返回值:	size_t => startCode长度
@@ -126,7 +126,7 @@ public:
 	 * 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
 	 */
 	STATUS checkStreamBuf();
-public:
+public: // 当测试完毕后，需改为private
 	ifstream m_fileStream;	///< 文件流
 	size_t m_len;	///< 流数据长度
 	char m_binPos;		///< 二进制指针的位置, 始终指向要读的下一位(8位, 从0开始, 值为0~7)
