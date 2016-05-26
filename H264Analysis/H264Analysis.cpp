@@ -3,10 +3,7 @@
 H264Analysis::H264Analysis(void)
 {
 	/// 初始化流结构
-	//m_stream = new DataStream();
-	//m_stream->buf = NULL;
 	m_len = 0;
-	//m_stream->ptr = NULL;
 	m_lastByte = 0;
 	m_binPos = 0;
 
@@ -26,6 +23,16 @@ H264Analysis::~H264Analysis(void)
 {
 	if (m_fileStream.is_open())
 		closeFile();
+
+	if (m_pStreamBuf)
+	{
+		if (m_pStreamBuf->buf)
+		{
+			delete [] m_pStreamBuf->buf;
+			m_pStreamBuf->buf = NULL;
+		}
+		delete m_pStreamBuf;
+	}
 
 #ifdef TIME_TEST
 	if (m_debugFileStream.is_open())
@@ -95,61 +102,6 @@ void H264Analysis::closeFile()
 	m_debugFileStream << "closeFile " << time_diff << endl;
 #endif
 }
-
-//************************************
-// 函数名:	H264Analysis::readNaluData
-// 描述:	读取Nalu，完成后文件指针指向下一个Nalu的开头
-// 返回值:	size_t => Nalu长度（包含startCode）
-// 参数: 	char * naluData(out: 返回Nalu, 为空时不获取数据)
-// 日期: 	2016/05/17
-// 作者: 	YJZ
-// 修改记录:
-//************************************
-/*size_t H264Analysis::readNaluData( char *naluData )
-{
-#ifdef TIME_TEST
-	DWORD time_beg = GetTickCount();
-#endif
-	// 获取当前的Nalu位置(包含startCode)
-	int curNaluPos = m_fileStream.tellg();
-	int len = 0;
-
-	// 定位到跳过startCode位置
-	int startCodeLen = skipNaluStartCode();
-
-	// 获取Nalu数据部分的位置
-	int curNaluDataPos = curNaluPos + startCodeLen;
-
-	// 获取下一Nalu的位置(包含startCode)
-	int nextNaluPos = 0;
-	if (nextNalu(&nextNaluPos) == FileEnd)
-	{
-		// 已到文件结尾
-		nextNaluPos = m_len;
-	}
-
-	// 读取Nalu的数据长度
-	len = nextNaluPos - curNaluPos; // Nalu长度
-
-	// 回到原来Nalu的位置
-	m_fileStream.seekg(-len, ios::cur);
-	
-	// 置位二进制指针标记
-	if (naluData)
-	{
-		// 读取Nalu数据
-		if (readNextBytes(naluData, len) == Failed)
-			throw exception();
-		m_binPos = 0;
-		m_lastByte = naluData[0];
-		m_fileStream.seekg(-len, ios::cur);	// 回到原来的Nalu位置
-	}
-#ifdef TIME_TEST
-	DWORD time_diff = GetTickCount() - time_beg;
-	m_debugFileStream << "readNaluData " << time_diff << endl;
-#endif
-	return len;
-}*/
 
 //************************************
 // 函数名:	H264Analysis::nextNalu
@@ -442,16 +394,35 @@ size_t H264Analysis::next_I_Nalu( char **naluData )
 	unsigned int egcDataLen = 0;
 	unsigned int egcSize = 0;
 	char *naluDataTmp = NULL;
-
+	bool flagSPS = 0;
+	int flagCount = 0;
+	int flagSPSFilePtrPos = 0;
+	int filePtrPos = 0;
 	while (naluLen = nextNalu(&naluDataTmp))	///<  1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
 	{
 		startCodeLen = scLen(naluDataTmp);
-		
+
 		// 2. 获取下一字节，判断Nalu类型
 		nextByte = naluDataTmp[startCodeLen];	
 		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
 		egcDataPos = startCodeLen + 1;
 		egcDataLen = naluLen - egcDataPos;
+
+		// 将SPS位置记录，若后方第2个或第3个为I帧，则把从该SPS位置开始到I帧结束的数据放入naluData中传出
+		if (nal_unit_type == NAL_SPS)
+		{
+			flagSPS = true;
+			flagSPSFilePtrPos = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - naluLen;
+		}
+		if (flagSPS)
+			flagCount++;
+		if (flagCount > 4)
+		{
+			flagCount = 0;
+			flagSPS = false;
+			flagSPSFilePtrPos = 0;
+		}
+
 		if (nal_unit_type == NAL_SLICE || nal_unit_type == NAL_IDR_SLICE || nal_unit_type == NAL_AUXILIARY_SLICE)
 		{
 			// EGC解码第一次获得first_mb_in_slice, EGC解码第二次获得slice_type
@@ -461,12 +432,28 @@ size_t H264Analysis::next_I_Nalu( char **naluData )
 			m_binPos = 0;	///< 二进制指针位置归零
 			m_lastByte = 0;	///< 字节归零
 
-
 			if (slice_type == SLICE_TYPE_I1 || slice_type == SLICE_TYPE_I2)
 			{
 				// 3. 若为要找类型，则判断naluData是否为空:
 				if (naluData) ///< 非空：则 *naluData = naluDataTmp
-					*naluData = naluDataTmp;
+				{
+					if (flagSPS && flagCount)
+					{
+						naluLen = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - flagSPSFilePtrPos;	///< 要拷贝的长度
+						int filePtrPos = m_fileStream.tellg();
+						m_fileStream.seekg(flagSPSFilePtrPos);
+						*naluData = new char[naluLen];
+						if (readNextBytes(*naluData, naluLen) < naluLen)
+							throw exception();
+						m_fileStream.seekg(filePtrPos);
+						flagSPS = false;
+						flagCount = 0;
+						delete [] naluDataTmp;
+						naluDataTmp = NULL;
+					}
+					else
+						*naluData = naluDataTmp;
+				}
 				else	///< 为空：则 delete [] naluDataTmp
 				{
 					delete [] naluDataTmp;
@@ -852,7 +839,7 @@ STATUS H264Analysis::skipTo( short int persent )
 	if (persent < 0 || persent > 100)
 		return Failed;
 
-	size_t pos = m_len * persent * 0.01;
+	size_t pos = m_len * (persent * 0.01);
 	m_fileStream.seekg(pos);
 	
 	// 清空缓存
@@ -947,41 +934,6 @@ size_t H264Analysis::readNextBytes( char *p, int len)
 	return readLen;
 }
 
-
-//************************************
-// 函数名:	H264Analysis::readNextByte
-// 描述:	读取接下来的1个字节
-// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
-// 参数: 	char * c(out: 传出字节数据)
-// 日期: 	2016/05/18
-// 作者: 	YJZ
-// 修改记录:
-//************************************
-/*STATUS H264Analysis::readNextByte( char *c )
-{
-// #ifdef TIME_TEST
-// 	DWORD time_beg = GetTickCount();
-// #endif
-// 	if (m_fileStream.tellg() >= m_len)
-// 	{
-// 		return Failed;
-// 	}
-// 
-// 	m_fileStream.read(c, 1);
-	if (checkStreamBuf() == Failed)
-		return Failed;
-
-	if (m_pStreamBuf->tellgBase + m_pStreamBuf->pos >= m_len)
-		return Failed;
-
-	*c = m_pStreamBuf->buf[m_pStreamBuf->pos];
-	m_pStreamBuf->pos++;
-	return Success;
-// #ifdef TIME_TEST
-// 	DWORD time_diff = GetTickCount() - time_beg;
-// 	m_debugFileStream << "readNextByte " << time_diff << endl;
-// #endif
-}*/
 
 
 //************************************
@@ -1084,12 +1036,8 @@ STATUS H264Analysis::ueDecode(char *egcData, size_t len, UINT32 *codeNum, unsign
 		else
 		{
 			leadingZeroBytes = bits_get_byte_num(leadingZeroBits);
-
-//////////////////////////////////////////////
 			int leftLeadingZeroBits = leadingZeroBits - leftBits;	
 			int leftLeadingZeroBytes = bits_get_byte_num(leftLeadingZeroBits); 
-/////////////////////////////////////////
-
 			char *p = new char[leadingZeroBytes];
 			UINT32 golombCode = 0;
  			if (egcPtrPos + leftLeadingZeroBytes >= len)
@@ -1154,4 +1102,3 @@ STATUS H264Analysis::checkStreamBuf()
 	}
 	return Success;
 }
-
