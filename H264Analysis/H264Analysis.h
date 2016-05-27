@@ -95,21 +95,27 @@ public:
 	 * 参数: 	short int persent(in: 0~100, 传入要跳转的百分比)
 	 */
 	STATUS skipTo(short int persent);
-public: // 当测试完毕后，需改为protected
+	
+	/**
+	 * 描述:	获取Nalu的类型
+	 * 返回值:	NalUnitType => Nalu类型
+	 * 参数: 	char * naluData(in: 传入Nalu数据)
+	 */
+	NalUnitType getNaluType(char *naluData);
+
+	/**
+	 * 描述:	获取帧类型
+	 * 返回值:	SliceType => 帧类型
+	 * 参数: 	char * naluData(in: 传入Nalu数据)
+	 */
+	SliceType getSliceType(char *naluData);
+
 	/**
 	 * 描述:	返回startCode长度
 	 * 返回值:	size_t => startCode长度
 	 * 参数: 	char * p
 	 */
 	size_t scLen(char *p);
-
-	/**
-	 * 描述:	读取接下来的len个字节
-	 * 返回值:	size_t => 成功读取的字节数
-	 * 参数: 	char * p(out: 传出读取的字节数据，需要调用者分配和释放内存)
-	 * 参数: 	int len(in: 读取字节的长度)
-	 */
-	size_t readNextBytes(char *p, int len);///< 读取len个字节
 
 	/**
 	 * 描述:	解码Exp-Golomb-Code(指数哥伦布编码)
@@ -120,6 +126,15 @@ public: // 当测试完毕后，需改为protected
 	 * 参数:	unsigned int * egcSize(out: 传出解码用的字节数)
 	 */
 	STATUS ueDecode(char *egcData, size_t len, UINT32 *codeNum, unsigned int *egcSize);		///< 解码无符号整型指数哥伦布编码
+
+public: // 当测试完毕后，需改为protected
+	/**
+	 * 描述:	读取接下来的len个字节
+	 * 返回值:	size_t => 成功读取的字节数
+	 * 参数: 	char * p(out: 传出读取的字节数据，需要调用者分配和释放内存)
+	 * 参数: 	int len(in: 读取字节的长度)
+	 */
+	size_t readNextBytes(char *p, int len);///< 读取len个字节
 
 	/**
 	 * 描述:	检查缓冲区的数据是否还够，若不够则再次读取BUFSIZE字节的文件内容

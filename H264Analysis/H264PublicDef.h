@@ -37,7 +37,8 @@ enum SliceType {
 	SLICE_TYPE_B2	=	6,
 	SLICE_TYPE_I2	=	7,
 	SLICE_TYPE_SP2	=	8,
-	SLICE_TYPE_SI2	=	9
+	SLICE_TYPE_SI2	=	9,
+	SLICE_TYPE_NONE =	10
 };
 
 typedef int STATUS;	// ·µ»Ø×´Ì¬ ( 0 => Failed, 1 => Success)

@@ -462,7 +462,11 @@ size_t H264Analysis::next_I_Nalu( char **naluData )
 				// 4. 返回长度
 				return naluLen;
 			}
-			
+			else
+			{
+				delete [] naluDataTmp;
+				naluDataTmp = NULL;
+			}
 
 #ifdef TIME_TEST
 			DWORD time_diff = GetTickCount() - time_beg;
@@ -546,6 +550,11 @@ size_t H264Analysis::next_P_Nalu( char **naluData )
 				}
 				// 4. 返回长度
 				return naluLen;
+			}
+			else
+			{
+				delete [] naluDataTmp;
+				naluDataTmp = NULL;
 			}
 			
 
@@ -632,7 +641,11 @@ size_t H264Analysis::next_B_Nalu( char **naluData )
 				// 4. 返回长度
 				return naluLen;
 			}
-			
+			else
+			{
+				delete [] naluDataTmp;
+				naluDataTmp = NULL;
+			}
 
 #ifdef TIME_TEST
 			DWORD time_diff = GetTickCount() - time_beg;
@@ -717,7 +730,11 @@ size_t H264Analysis::next_SI_Nalu( char **naluData )
 				// 4. 返回长度
 				return naluLen;
 			}
-			
+			else
+			{
+				delete [] naluDataTmp;
+				naluDataTmp = NULL;
+			}
 
 #ifdef TIME_TEST
 			DWORD time_diff = GetTickCount() - time_beg;
@@ -802,7 +819,11 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 				// 4. 返回长度
 				return naluLen;
 			}
-			
+			else
+			{
+				delete [] naluDataTmp;
+				naluDataTmp = NULL;
+			}
 
 #ifdef TIME_TEST
 			DWORD time_diff = GetTickCount() - time_beg;
@@ -863,6 +884,61 @@ STATUS H264Analysis::skipTo( short int persent )
 
 
 //************************************
+// 函数名:	H264Analysis::getNaluType
+// 描述:	获取Nalu的类型
+// 返回值:	NalUnitType => Nalu类型
+// 参数: 	char * naluData(in: 传入Nalu数据)
+// 日期: 	2016/05/27
+// 作者: 	YJZ
+// 修改记录:
+//************************************
+NalUnitType H264Analysis::getNaluType( char *naluData )
+{
+	return (NalUnitType)B8_VAL_BASE_R(naluData[scLen(naluData)], 3, 5);
+}
+
+//************************************
+// 函数名:	H264Analysis::getSliceType
+// 描述:	获取帧类型
+// 返回值:	SliceType => 帧类型
+// 参数: 	char * naluData(in: 传入Nalu数据)
+// 日期: 	2016/05/27
+// 作者: 	YJZ
+// 修改记录:
+//************************************
+SliceType H264Analysis::getSliceType( char *naluData )
+{
+	size_t naluLen = 0;
+	int startCodeLen = 0;
+	unsigned char nextByte = 0;
+	UINT32 nal_unit_type = 0;
+	UINT32 first_mb_in_slice = 0;
+	UINT32 slice_type = 0;
+	unsigned int egcDataPos = 0;
+	unsigned int egcDataLen = 0;
+	unsigned int egcSize = 0;
+	startCodeLen = scLen(naluData);
+	nal_unit_type = getNaluType(naluData);
+	if (nal_unit_type == NAL_SLICE || nal_unit_type == NAL_IDR_SLICE || nal_unit_type == NAL_AUXILIARY_SLICE)
+	{
+		egcDataPos = startCodeLen + 1;
+		egcDataLen = naluLen - egcDataPos;
+		// EGC解码第一次获得first_mb_in_slice, EGC解码第二次获得slice_type
+		if (ueDecode(&naluData[egcDataPos], egcDataLen, &first_mb_in_slice, &egcSize) == Failed || 
+			ueDecode(&naluData[egcDataPos + egcSize], egcDataLen, &slice_type, &egcSize) == Failed)
+		{
+			throw exception();
+		}
+		m_binPos = 0;	///< 二进制指针位置归零
+		m_lastByte = 0;	///< 字节归零
+
+		return (SliceType)slice_type;
+	}
+	else
+		return SLICE_TYPE_NONE;
+}
+
+//************************************
 // 函数名:	H264Analysis::scLen
 // 描述:	返回startCode长度
 // 返回值:	size_t => startCode长度
@@ -899,42 +975,6 @@ size_t H264Analysis::scLen(char *p)
 
 	return len;
 }
-
-
-//************************************
-// 函数名:	H264Analysis::readNextBytes
-// 描述:	读取接下来的len个字节
-// 返回值:	size_t => 成功读取的字节数
-// 参数: 	char * p(out: 传出读取的字节数据，需要调用者分配和释放内存)
-// 参数: 	int len(in: 读取字节的长度)
-// 日期: 	2016/05/18
-// 作者: 	YJZ
-// 修改记录:
-//************************************
-size_t H264Analysis::readNextBytes( char *p, int len)
-{
-#ifdef TIME_TEST
-	DWORD time_beg = GetTickCount();
-#endif
-	size_t readLen = len;
-	size_t filePtrPos = m_fileStream.tellg();
-	if (filePtrPos + len > m_len)
-	{
-		readLen = m_len - filePtrPos;
-		m_fileStream.read(p, readLen);
-	}
-	else
-		m_fileStream.read(p, len);
-	
-#ifdef TIME_TEST
-	DWORD time_diff = GetTickCount() - time_beg;
-	m_debugFileStream << "readNextBytes " << time_diff << endl;
-#endif
-
-	return readLen;
-}
-
-
 
 //************************************
 // 函数名:	H264Analysis::ueDecode
@@ -1070,6 +1110,41 @@ STATUS H264Analysis::ueDecode(char *egcData, size_t len, UINT32 *codeNum, unsign
 	*egcSize = egcPtrPos; ///< 返回解码EGC时读取的字节数
 	return Success;
 }
+
+//************************************
+// 函数名:	H264Analysis::readNextBytes
+// 描述:	读取接下来的len个字节
+// 返回值:	size_t => 成功读取的字节数
+// 参数: 	char * p(out: 传出读取的字节数据，需要调用者分配和释放内存)
+// 参数: 	int len(in: 读取字节的长度)
+// 日期: 	2016/05/18
+// 作者: 	YJZ
+// 修改记录:
+//************************************
+size_t H264Analysis::readNextBytes( char *p, int len)
+{
+#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
+	size_t readLen = len;
+	size_t filePtrPos = m_fileStream.tellg();
+	if (filePtrPos + len > m_len)
+	{
+		readLen = m_len - filePtrPos;
+		m_fileStream.read(p, readLen);
+	}
+	else
+		m_fileStream.read(p, len);
+	
+#ifdef TIME_TEST
+	DWORD time_diff = GetTickCount() - time_beg;
+	m_debugFileStream << "readNextBytes " << time_diff << endl;
+#endif
+
+	return readLen;
+}
+
+
 
 //************************************
 // 函数名:	H264Analysis::checkStreamBuf

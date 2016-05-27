@@ -36,9 +36,9 @@ void H264AnalysisDebug()
 		unsigned char nextByte = naluData[startCodeLen];
 		UINT32 forbidden_zero_bit = B8_VAL_BASE_R(nextByte, 0, 1);
 		UINT32 nal_ref_idc = B8_VAL_BASE_R(nextByte, 1, 2);
-		UINT32 nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
+		UINT32 nal_unit_type = /*B8_VAL_BASE_R(nextByte, 3, 5);*/h264Analysis.getNaluType(naluData);
 		UINT32 first_mb_in_slice = 0;
-		UINT32 slice_type = 0;
+		UINT32 slice_type = /*0;*/h264Analysis.getSliceType(naluData);
 		UINT32 pic_parameter_set_id = 0;
 		unsigned int egcDataPos = startCodeLen + 1;
 		unsigned int egcDataLen = NaluSize - egcDataPos;
@@ -49,12 +49,12 @@ void H264AnalysisDebug()
 		case NAL_SLICE:
 		case NAL_IDR_SLICE:
 		case NAL_AUXILIARY_SLICE:
-			if (h264Analysis.ueDecode(&naluData[egcDataPos], egcDataLen, &first_mb_in_slice, &egcSize) == H264Analysis::Failed)
-				break;
-			if (h264Analysis.ueDecode(&naluData[egcDataPos + egcSize], egcDataLen - egcSize, &slice_type, &egcSize) == H264Analysis::Failed)
-				break;
-			h264Analysis.m_binPos = 0;
-			h264Analysis.m_lastByte = 0;
+// 			if (h264Analysis.ueDecode(&naluData[egcDataPos], egcDataLen, &first_mb_in_slice, &egcSize) == H264Analysis::Failed)
+// 				break;
+// 			if (h264Analysis.ueDecode(&naluData[egcDataPos + egcSize], egcDataLen - egcSize, &slice_type, &egcSize) == H264Analysis::Failed)
+// 				break;
+// 			h264Analysis.m_binPos = 0;
+// 			h264Analysis.m_lastByte = 0;
 
 			switch (slice_type)
 			{
@@ -148,13 +148,13 @@ void H264AnalysisDebug()
 	NaluCount = 0;
 	NaluSize = 0;
 	NaluTotalSize = 0;
-	/*
+	
 	cout << "------------------------------------------" << endl;
 	cout << left << setprecision(6) <<  setiosflags(ios::fixed);
 	cout << setw(10) << "Category" << setw(10) << "Number" << setw(12) << "Size(MB)" << setw(10) << "Time(ms)" << endl;
 	cout << "------------------------------------------" << endl;
-	//fileStream.seekg(0, ios::beg);
-	fileStream.seekg(0, ios::beg);
+	//fileStream.seekg(ios::beg);
+	fileStream.seekg(ios::beg);
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	DWORD time_beg = GetTickCount();
@@ -167,7 +167,7 @@ void H264AnalysisDebug()
 	DWORD time_diff = GetTickCount() - time_beg;
 	cout << setw(10) << "NALU" << setw(10) << NaluCount << setw(12) << (float)NaluTotalSize/1024/1024 << setw(10) << time_diff << endl;
 	
-	fileStream.seekg(0, ios::beg);
+	fileStream.seekg(ios::beg);
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
@@ -179,7 +179,7 @@ void H264AnalysisDebug()
 	time_diff = GetTickCount() - time_beg;
 	cout << setw(10) << "P" << setw(10) << pCount << setw(12) << (float)pSize/1024/1024 << setw(10) << time_diff << endl;
 	
-	fileStream.seekg(0, ios::beg);
+	fileStream.seekg(ios::beg);
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
@@ -191,7 +191,7 @@ void H264AnalysisDebug()
 	time_diff = GetTickCount() - time_beg;
 	cout << setw(10) << "B" << setw(10) << bCount << setw(12) << (float)bSize/1024/1024 << setw(10) << time_diff << endl;
 	
-	fileStream.seekg(0, ios::beg);
+	fileStream.seekg(ios::beg);
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
@@ -203,7 +203,7 @@ void H264AnalysisDebug()
 	time_diff = GetTickCount() - time_beg;
 	cout << setw(10) << "I" << setw(10) << iCount << setw(12) << (float)iSize/1024/1024 << setw(10) << time_diff << endl;
 	
-	fileStream.seekg(0, ios::beg);
+	fileStream.seekg(ios::beg);
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
@@ -215,7 +215,7 @@ void H264AnalysisDebug()
 	time_diff = GetTickCount() - time_beg;
 	cout << setw(10) << "SI" << setw(10) << siCount << setw(12) << (float)siSize/1024/1024 << setw(10) << time_diff << endl;
 	
-	fileStream.seekg(0, ios::beg);
+	fileStream.seekg(ios::beg);
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
@@ -227,7 +227,7 @@ void H264AnalysisDebug()
 	time_diff = GetTickCount() - time_beg;
 	cout << setw(10) << "SP" << setw(10) << spCount << setw(12) << (float)spSize/1024/1024 << setw(10) << time_diff << endl;
 	
-	fileStream.seekg(0, ios::beg);	
+	fileStream.seekg(ios::beg);	
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
@@ -239,7 +239,7 @@ void H264AnalysisDebug()
 	time_diff = GetTickCount() - time_beg;
 	cout << setw(10) << "SPS" << setw(10) << spsCount << setw(12) << (float)spsSize/1024/1024 << setw(10) << time_diff << endl;
 	
-	fileStream.seekg(0, ios::beg);	
+	fileStream.seekg(ios::beg);	
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
@@ -254,7 +254,7 @@ void H264AnalysisDebug()
 	cout << "×ÜºÄÊ±: " << timeTotal_diff << " ms" << endl;
 // 	cout << setw(10) << "SEI" << setw(10) << seiCount << setw(10) << (float)seiSize/1024/1024 << endl;
 // 	cout << setw(10) << "AUD" << setw(10) << audCount << setw(10) << (float)audSize/1024/1024 << endl;
-	cout << "------------------------------------------" << endl;*/
+	cout << "------------------------------------------" << endl;
 	h264Analysis.closeFile();
 	
 }
