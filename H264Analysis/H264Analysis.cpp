@@ -256,7 +256,7 @@ size_t H264Analysis::next_SPS_Nalu( char **naluData )
 	size_t naluLen = 0;
 	int startCodeLen = 0;
 	unsigned char nextByte = 0;
-	UINT32 nal_unit_type = 0;
+	NalUnitType nal_unit_type = NAL_FF_IGNORE;
 	char *naluDataTmp = NULL;
 
 	while (naluLen = nextNalu(&naluDataTmp))	///<  1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
@@ -265,7 +265,7 @@ size_t H264Analysis::next_SPS_Nalu( char **naluData )
 		
 		// 2. 获取下一字节，判断Nalu类型
 		nextByte = naluDataTmp[startCodeLen];	
-		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
+		nal_unit_type = (NalUnitType)B8_VAL_BASE_R(nextByte, 3, 5);
 		if (nal_unit_type == NAL_SPS)
 		{
 			// 3. 若为要找类型，则判断naluData是否为空:
@@ -322,7 +322,7 @@ size_t H264Analysis::next_PPS_Nalu( char **naluData )
 	size_t naluLen = 0;
 	int startCodeLen = 0;
 	unsigned char nextByte = 0;
-	UINT32 nal_unit_type = 0;
+	NalUnitType nal_unit_type = NAL_FF_IGNORE;
 	char *naluDataTmp = NULL;
 
 	while (naluLen = nextNalu(&naluDataTmp))	///<  1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
@@ -331,7 +331,7 @@ size_t H264Analysis::next_PPS_Nalu( char **naluData )
 		
 		// 2. 获取下一字节，判断Nalu类型
 		nextByte = naluDataTmp[startCodeLen];	
-		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
+		nal_unit_type = (NalUnitType)B8_VAL_BASE_R(nextByte, 3, 5);
 		if (nal_unit_type == NAL_PPS)
 		{
 			// 3. 若为要找类型，则判断naluData是否为空:
@@ -357,6 +357,140 @@ size_t H264Analysis::next_PPS_Nalu( char **naluData )
 		}
 		
 	}
+	return Failed;
+}
+
+//************************************
+// 函数名:	H264Analysis::next_IDR_Nalu
+// 描述:	获取下一个包含IDR帧的Nalu, 并将数据放入参数naluData传出，完成后文件指针指向下一个Nalu的开头(naluData为空时，不获取数据，只返回长度)
+// 返回值:	size_t => Nalu长度（包含startCode）
+// 参数: 	char * * naluData(out: 返回Nalu, 包含startCode, 为空时不获取数据)
+// 日期: 	2016/05/30
+// 作者: 	YJZ
+// 修改记录:
+//************************************
+size_t H264Analysis::next_IDR_Nalu( char **naluData /*= NULL*/ )
+{
+	#ifdef TIME_TEST
+	DWORD time_beg = GetTickCount();
+#endif
+	/**
+	 * 1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
+	 * 2. 获取下一字节，判断Nalu类型
+	 * 3. 若为要找类型，则判断naluData是否为空:
+	 *		为空：则 delete [] naluDataTmp
+	 *		非空：则 *naluData = naluDataTmp
+	 * 4. 若不为要找的类型，则 delete [] naluDataTmp
+	 * 5. 返回长度
+	 */
+
+	size_t naluLen = 0;
+	int startCodeLen = 0;
+	unsigned char nextByte = 0;
+	NalUnitType nal_unit_type = NAL_FF_IGNORE;
+	UINT32 first_mb_in_slice = 0;
+	SliceType slice_type = SLICE_TYPE_NONE;
+	unsigned int egcDataPos = 0;
+	unsigned int egcDataLen = 0;
+	unsigned int egcSize = 0;
+	char *naluDataTmp = NULL;
+	bool flag = 0;
+	int flagCount = 0;
+	int flagFilePtrPos = 0;
+	int filePtrPos = 0;
+	while (naluLen = nextNalu(&naluDataTmp))	///<  1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
+	{
+		startCodeLen = scLen(naluDataTmp);
+
+		// 2. 获取下一字节，判断Nalu类型
+		nextByte = naluDataTmp[startCodeLen];	
+		nal_unit_type = (NalUnitType)B8_VAL_BASE_R(nextByte, 3, 5);
+		egcDataPos = startCodeLen + 1;
+		egcDataLen = naluLen - egcDataPos;
+
+		// 将SPS位置记录，若后方第2个或第3个为I帧，则把从该SPS位置开始到I帧结束的数据放入naluData中传出
+		if (!flag && 
+			(nal_unit_type == NAL_SPS ||
+			nal_unit_type == NAL_PPS ||
+			nal_unit_type == NAL_SEI)
+			)
+		{
+			flag = true;
+			flagFilePtrPos = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - naluLen;
+		}
+		if (flag)
+			flagCount++;
+		if (flagCount > 4)
+		{
+			flagCount = 0;
+			flag = false;
+			flagFilePtrPos = 0;
+		}
+
+		if (nal_unit_type == NAL_IDR_SLICE)
+		{
+			// EGC解码第一次获得first_mb_in_slice, EGC解码第二次获得slice_type
+			if (ueDecode(&naluDataTmp[egcDataPos], egcDataLen, &first_mb_in_slice, &egcSize) == Failed || 
+				ueDecode(&naluDataTmp[egcDataPos + egcSize], egcDataLen, (UINT32 *)&slice_type, &egcSize) == Failed)
+				return Failed;
+			m_binPos = 0;	///< 二进制指针位置归零
+			m_lastByte = 0;	///< 字节归零
+
+			if (slice_type == SLICE_TYPE_I1 || slice_type == SLICE_TYPE_I2)
+			{
+				// 3. 若为要找类型，则判断naluData是否为空:
+				if (naluData) ///< 非空：则 *naluData = naluDataTmp
+				{
+					if (flag && flagCount)
+					{
+						naluLen = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - flagFilePtrPos;	///< 要拷贝的长度
+						int filePtrPos = m_fileStream.tellg();
+						m_fileStream.seekg(flagFilePtrPos);
+						*naluData = new char[naluLen];
+						if (readNextBytes(*naluData, naluLen) < naluLen)
+							throw exception();
+						m_fileStream.seekg(filePtrPos);
+						flag = false;
+						flagCount = 0;
+						delete [] naluDataTmp;
+						naluDataTmp = NULL;
+					}
+					else
+						*naluData = naluDataTmp;
+				}
+				else	///< 为空：则 delete [] naluDataTmp
+				{
+					if (flag && flagCount)
+					{
+						naluLen = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - flagFilePtrPos;
+						flag = false;
+						flagCount = 0;
+					}
+					delete [] naluDataTmp;
+					naluDataTmp = NULL;
+				}
+				// 4. 返回长度
+				return naluLen;
+			}
+			else
+			{
+				delete [] naluDataTmp;
+				naluDataTmp = NULL;
+			}
+
+#ifdef TIME_TEST
+			DWORD time_diff = GetTickCount() - time_beg;
+			m_debugFileStream << "next_PPS_Nalu " << time_diff << endl;
+#endif
+		}
+		else
+		{
+			delete [] naluDataTmp;
+			naluDataTmp = NULL;
+		}
+		
+	}
+
 	return Failed;
 }
 
@@ -387,16 +521,16 @@ size_t H264Analysis::next_I_Nalu( char **naluData )
 	size_t naluLen = 0;
 	int startCodeLen = 0;
 	unsigned char nextByte = 0;
-	UINT32 nal_unit_type = 0;
+	NalUnitType nal_unit_type = NAL_FF_IGNORE;
 	UINT32 first_mb_in_slice = 0;
-	UINT32 slice_type = 0;
+	SliceType slice_type = SLICE_TYPE_NONE;
 	unsigned int egcDataPos = 0;
 	unsigned int egcDataLen = 0;
 	unsigned int egcSize = 0;
 	char *naluDataTmp = NULL;
-	bool flagSPS = 0;
+	bool flag = 0;
 	int flagCount = 0;
-	int flagSPSFilePtrPos = 0;
+	int flagFilePtrPos = 0;
 	int filePtrPos = 0;
 	while (naluLen = nextNalu(&naluDataTmp))	///<  1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
 	{
@@ -404,30 +538,34 @@ size_t H264Analysis::next_I_Nalu( char **naluData )
 
 		// 2. 获取下一字节，判断Nalu类型
 		nextByte = naluDataTmp[startCodeLen];	
-		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
+		nal_unit_type = (NalUnitType)B8_VAL_BASE_R(nextByte, 3, 5);
 		egcDataPos = startCodeLen + 1;
 		egcDataLen = naluLen - egcDataPos;
 
 		// 将SPS位置记录，若后方第2个或第3个为I帧，则把从该SPS位置开始到I帧结束的数据放入naluData中传出
-		if (nal_unit_type == NAL_SPS)
+		if (!flag && 
+			(nal_unit_type == NAL_SPS ||
+			nal_unit_type == NAL_PPS ||
+			nal_unit_type == NAL_SEI)
+			)
 		{
-			flagSPS = true;
-			flagSPSFilePtrPos = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - naluLen;
+			flag = true;
+			flagFilePtrPos = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - naluLen;
 		}
-		if (flagSPS)
+		if (flag)
 			flagCount++;
 		if (flagCount > 4)
 		{
 			flagCount = 0;
-			flagSPS = false;
-			flagSPSFilePtrPos = 0;
+			flag = false;
+			flagFilePtrPos = 0;
 		}
 
 		if (nal_unit_type == NAL_SLICE || nal_unit_type == NAL_IDR_SLICE || nal_unit_type == NAL_AUXILIARY_SLICE)
 		{
 			// EGC解码第一次获得first_mb_in_slice, EGC解码第二次获得slice_type
 			if (ueDecode(&naluDataTmp[egcDataPos], egcDataLen, &first_mb_in_slice, &egcSize) == Failed || 
-				ueDecode(&naluDataTmp[egcDataPos + egcSize], egcDataLen, &slice_type, &egcSize) == Failed)
+				ueDecode(&naluDataTmp[egcDataPos + egcSize], egcDataLen, (UINT32 *)&slice_type, &egcSize) == Failed)
 				return Failed;
 			m_binPos = 0;	///< 二进制指针位置归零
 			m_lastByte = 0;	///< 字节归零
@@ -437,16 +575,16 @@ size_t H264Analysis::next_I_Nalu( char **naluData )
 				// 3. 若为要找类型，则判断naluData是否为空:
 				if (naluData) ///< 非空：则 *naluData = naluDataTmp
 				{
-					if (flagSPS && flagCount)
+					if (flag && flagCount)
 					{
-						naluLen = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - flagSPSFilePtrPos;	///< 要拷贝的长度
+						naluLen = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - flagFilePtrPos;	///< 要拷贝的长度
 						int filePtrPos = m_fileStream.tellg();
-						m_fileStream.seekg(flagSPSFilePtrPos);
+						m_fileStream.seekg(flagFilePtrPos);
 						*naluData = new char[naluLen];
 						if (readNextBytes(*naluData, naluLen) < naluLen)
 							throw exception();
 						m_fileStream.seekg(filePtrPos);
-						flagSPS = false;
+						flag = false;
 						flagCount = 0;
 						delete [] naluDataTmp;
 						naluDataTmp = NULL;
@@ -456,6 +594,12 @@ size_t H264Analysis::next_I_Nalu( char **naluData )
 				}
 				else	///< 为空：则 delete [] naluDataTmp
 				{
+					if (flag && flagCount)
+					{
+						naluLen = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - flagFilePtrPos;
+						flag = false;
+						flagCount = 0;
+					}
 					delete [] naluDataTmp;
 					naluDataTmp = NULL;
 				}
@@ -511,9 +655,9 @@ size_t H264Analysis::next_P_Nalu( char **naluData )
 	size_t naluLen = 0;
 	int startCodeLen = 0;
 	unsigned char nextByte = 0;
-	UINT32 nal_unit_type = 0;
+	NalUnitType nal_unit_type = NAL_FF_IGNORE;
 	UINT32 first_mb_in_slice = 0;
-	UINT32 slice_type = 0;
+	SliceType slice_type = SLICE_TYPE_NONE;
 	unsigned int egcDataPos = 0;
 	unsigned int egcDataLen = 0;
 	unsigned int egcSize = 0;
@@ -525,14 +669,14 @@ size_t H264Analysis::next_P_Nalu( char **naluData )
 		
 		// 2. 获取下一字节，判断Nalu类型
 		nextByte = naluDataTmp[startCodeLen];	
-		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
+		nal_unit_type = (NalUnitType)B8_VAL_BASE_R(nextByte, 3, 5);
 		egcDataPos = startCodeLen + 1;
 		egcDataLen = naluLen - egcDataPos;
 		if (nal_unit_type == NAL_SLICE || nal_unit_type == NAL_IDR_SLICE || nal_unit_type == NAL_AUXILIARY_SLICE)
 		{
 			// EGC解码第一次获得first_mb_in_slice, EGC解码第二次获得slice_type
 			if (ueDecode(&naluDataTmp[egcDataPos], egcDataLen, &first_mb_in_slice, &egcSize) == Failed || 
-				ueDecode(&naluDataTmp[egcDataPos + egcSize], egcDataLen, &slice_type, &egcSize) == Failed)
+				ueDecode(&naluDataTmp[egcDataPos + egcSize], egcDataLen, (UINT32 *)&slice_type, &egcSize) == Failed)
 				return Failed;
 			m_binPos = 0;	///< 二进制指针位置归零
 			m_lastByte = 0;	///< 字节归零
@@ -601,9 +745,9 @@ size_t H264Analysis::next_B_Nalu( char **naluData )
 	size_t naluLen = 0;
 	int startCodeLen = 0;
 	unsigned char nextByte = 0;
-	UINT32 nal_unit_type = 0;
+	NalUnitType nal_unit_type = NAL_FF_IGNORE;
 	UINT32 first_mb_in_slice = 0;
-	UINT32 slice_type = 0;
+	SliceType slice_type = SLICE_TYPE_NONE;
 	unsigned int egcDataPos = 0;
 	unsigned int egcDataLen = 0;
 	unsigned int egcSize = 0;
@@ -615,14 +759,14 @@ size_t H264Analysis::next_B_Nalu( char **naluData )
 		
 		// 2. 获取下一字节，判断Nalu类型
 		nextByte = naluDataTmp[startCodeLen];	
-		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
+		nal_unit_type = (NalUnitType)B8_VAL_BASE_R(nextByte, 3, 5);
 		egcDataPos = startCodeLen + 1;
 		egcDataLen = naluLen - egcDataPos;
 		if (nal_unit_type == NAL_SLICE || nal_unit_type == NAL_IDR_SLICE || nal_unit_type == NAL_AUXILIARY_SLICE)
 		{
 			// EGC解码第一次获得first_mb_in_slice, EGC解码第二次获得slice_type
 			if (ueDecode(&naluDataTmp[egcDataPos], egcDataLen, &first_mb_in_slice, &egcSize) == Failed || 
-				ueDecode(&naluDataTmp[egcDataPos + egcSize], egcDataLen, &slice_type, &egcSize) == Failed)
+				ueDecode(&naluDataTmp[egcDataPos + egcSize], egcDataLen, (UINT32 *)&slice_type, &egcSize) == Failed)
 				return Failed;
 			m_binPos = 0;	///< 二进制指针位置归零
 			m_lastByte = 0;	///< 字节归零
@@ -690,9 +834,9 @@ size_t H264Analysis::next_SI_Nalu( char **naluData )
 	size_t naluLen = 0;
 	int startCodeLen = 0;
 	unsigned char nextByte = 0;
-	UINT32 nal_unit_type = 0;
+	NalUnitType nal_unit_type = NAL_FF_IGNORE;
 	UINT32 first_mb_in_slice = 0;
-	UINT32 slice_type = 0;
+	SliceType slice_type = SLICE_TYPE_NONE;
 	unsigned int egcDataPos = 0;
 	unsigned int egcDataLen = 0;
 	unsigned int egcSize = 0;
@@ -704,14 +848,14 @@ size_t H264Analysis::next_SI_Nalu( char **naluData )
 		
 		// 2. 获取下一字节，判断Nalu类型
 		nextByte = naluDataTmp[startCodeLen];	
-		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
+		nal_unit_type = (NalUnitType)B8_VAL_BASE_R(nextByte, 3, 5);
 		egcDataPos = startCodeLen + 1;
 		egcDataLen = naluLen - egcDataPos;
 		if (nal_unit_type == NAL_SLICE || nal_unit_type == NAL_IDR_SLICE || nal_unit_type == NAL_AUXILIARY_SLICE)
 		{
 			// EGC解码第一次获得first_mb_in_slice, EGC解码第二次获得slice_type
 			if (ueDecode(&naluDataTmp[egcDataPos], egcDataLen, &first_mb_in_slice, &egcSize) == Failed || 
-				ueDecode(&naluDataTmp[egcDataPos + egcSize], egcDataLen, &slice_type, &egcSize) == Failed)
+				ueDecode(&naluDataTmp[egcDataPos + egcSize], egcDataLen, (UINT32 *)&slice_type, &egcSize) == Failed)
 				return Failed;
 			m_binPos = 0;	///< 二进制指针位置归零
 			m_lastByte = 0;	///< 字节归零
@@ -779,9 +923,9 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 	size_t naluLen = 0;
 	int startCodeLen = 0;
 	unsigned char nextByte = 0;
-	UINT32 nal_unit_type = 0;
+	NalUnitType nal_unit_type = NAL_FF_IGNORE;
 	UINT32 first_mb_in_slice = 0;
-	UINT32 slice_type = 0;
+	SliceType slice_type = SLICE_TYPE_NONE;
 	unsigned int egcDataPos = 0;
 	unsigned int egcDataLen = 0;
 	unsigned int egcSize = 0;
@@ -793,14 +937,14 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 		
 		// 2. 获取下一字节，判断Nalu类型
 		nextByte = naluDataTmp[startCodeLen];	
-		nal_unit_type = B8_VAL_BASE_R(nextByte, 3, 5);
+		nal_unit_type = (NalUnitType)B8_VAL_BASE_R(nextByte, 3, 5);
 		egcDataPos = startCodeLen + 1;
 		egcDataLen = naluLen - egcDataPos;
 		if (nal_unit_type == NAL_SLICE || nal_unit_type == NAL_IDR_SLICE || nal_unit_type == NAL_AUXILIARY_SLICE)
 		{
 			// EGC解码第一次获得first_mb_in_slice, EGC解码第二次获得slice_type
 			if (ueDecode(&naluDataTmp[egcDataPos], egcDataLen, &first_mb_in_slice, &egcSize) == Failed || 
-				ueDecode(&naluDataTmp[egcDataPos + egcSize], egcDataLen, &slice_type, &egcSize) == Failed)
+				ueDecode(&naluDataTmp[egcDataPos + egcSize], egcDataLen, (UINT32 *)&slice_type, &egcSize) == Failed)
 				return Failed;
 			m_binPos = 0;	///< 二进制指针位置归零
 			m_lastByte = 0;	///< 字节归零
@@ -911,9 +1055,9 @@ SliceType H264Analysis::getSliceType( char *naluData )
 	size_t naluLen = 0;
 	int startCodeLen = 0;
 	unsigned char nextByte = 0;
-	UINT32 nal_unit_type = 0;
+	NalUnitType nal_unit_type = NAL_FF_IGNORE;
 	UINT32 first_mb_in_slice = 0;
-	UINT32 slice_type = 0;
+	SliceType slice_type = SLICE_TYPE_NONE;
 	unsigned int egcDataPos = 0;
 	unsigned int egcDataLen = 0;
 	unsigned int egcSize = 0;
@@ -925,7 +1069,7 @@ SliceType H264Analysis::getSliceType( char *naluData )
 		egcDataLen = naluLen - egcDataPos;
 		// EGC解码第一次获得first_mb_in_slice, EGC解码第二次获得slice_type
 		if (ueDecode(&naluData[egcDataPos], egcDataLen, &first_mb_in_slice, &egcSize) == Failed || 
-			ueDecode(&naluData[egcDataPos + egcSize], egcDataLen, &slice_type, &egcSize) == Failed)
+			ueDecode(&naluData[egcDataPos + egcSize], egcDataLen, (UINT32 *)&slice_type, &egcSize) == Failed)
 		{
 			throw exception();
 		}

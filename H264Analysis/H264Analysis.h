@@ -55,6 +55,13 @@ public:
 	size_t next_PPS_Nalu(char **naluData = NULL);
 
 	/**
+	 * 描述:	获取下一个包含IDR帧的Nalu, 并将数据放入参数naluData传出，完成后文件指针指向下一个Nalu的开头(naluData为空时，不获取数据，只返回长度)
+	 * 返回值:	size_t => Nalu长度（包含startCode）
+	 * 参数: 	char * * naluData(out: 返回Nalu, 包含startCode, 为空时不获取数据)
+	 */
+	size_t next_IDR_Nalu(char **naluData = NULL);
+
+	/**
 	 * 描述:	获取下一个包含I帧的Nalu, 并将数据放入参数naluData传出，完成后文件指针指向下一个Nalu的开头(naluData为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => Nalu长度（包含startCode）
 	 * 参数: 	char * * naluData(out: 返回Nalu, 包含startCode, 为空时不获取数据)

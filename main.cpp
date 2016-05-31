@@ -18,8 +18,8 @@ void H264AnalysisDebug()
 {
 	H264Analysis h264Analysis;
 	ifstream& fileStream = h264Analysis.getOpenFile(g_fileNameStr);
-	int pCount = 0, bCount = 0, iCount = 0, siCount = 0, spCount = 0, spsCount = 0, ppsCount = 0, seiCount = 0, audCount = 0;
-	int pSize = 0, bSize = 0, iSize = 0, siSize = 0, spSize = 0, spsSize = 0, ppsSize = 0, seiSize = 0, audSize = 0;
+	int pCount = 0, bCount = 0, iCount = 0, siCount = 0, spCount = 0, spsCount = 0, ppsCount = 0, seiCount = 0, audCount = 0, slicCount = 0, idrCount = 0, auxCount = 0, dpaCount = 0, dpbCount = 0, dpcCount = 0;
+	int pSize = 0, bSize = 0, iSize = 0, siSize = 0, spSize = 0, spsSize = 0, ppsSize = 0, seiSize = 0, audSize = 0, slicSize = 0, idrSize = 0, auxSize = 0, dpaSize = 0, dpbSize = 0, dpcSize = 0;
 	int NaluCount = 0;
 	int NaluSize = 0;
 	int NaluTotalSize = 0;
@@ -36,9 +36,9 @@ void H264AnalysisDebug()
 		unsigned char nextByte = naluData[startCodeLen];
 		UINT32 forbidden_zero_bit = B8_VAL_BASE_R(nextByte, 0, 1);
 		UINT32 nal_ref_idc = B8_VAL_BASE_R(nextByte, 1, 2);
-		UINT32 nal_unit_type = /*B8_VAL_BASE_R(nextByte, 3, 5);*/h264Analysis.getNaluType(naluData);
+		NalUnitType nal_unit_type = /*B8_VAL_BASE_R(nextByte, 3, 5);*/h264Analysis.getNaluType(naluData);
 		UINT32 first_mb_in_slice = 0;
-		UINT32 slice_type = /*0;*/h264Analysis.getSliceType(naluData);
+		SliceType slice_type = /*0;*/h264Analysis.getSliceType(naluData);
 		UINT32 pic_parameter_set_id = 0;
 		unsigned int egcDataPos = startCodeLen + 1;
 		unsigned int egcDataLen = NaluSize - egcDataPos;
@@ -55,6 +55,21 @@ void H264AnalysisDebug()
 // 				break;
 // 			h264Analysis.m_binPos = 0;
 // 			h264Analysis.m_lastByte = 0;
+			if (nal_unit_type == NAL_SLICE)
+			{
+				slicCount++;
+				slicSize += NaluSize;
+			}
+			else if (nal_unit_type == NAL_IDR_SLICE)
+			{
+				idrCount++;
+				idrSize += NaluSize;
+			}
+			else if (nal_unit_type == NAL_AUXILIARY_SLICE)
+			{
+				auxCount++;
+				auxSize += NaluSize;
+			}
 
 			switch (slice_type)
 			{
@@ -88,10 +103,16 @@ void H264AnalysisDebug()
 			}
 			break;
 		case NAL_DPA:
+			dpaCount++;
+			dpaSize += NaluSize;
 			break;
 		case NAL_DPB:
+			dpbCount++;
+			dpbSize += NaluSize;
 			break;
 		case NAL_DPC:
+			dpcCount++;
+			dpcSize += NaluSize;
 			break;
 		case NAL_SEI:
 			seiCount++;
@@ -139,12 +160,18 @@ void H264AnalysisDebug()
 	cout << setw(10) << "PPS" << setw(10) << ppsCount << setw(10) << (float)ppsSize/1024/1024 << endl;
 	cout << setw(10) << "SEI" << setw(10) << seiCount << setw(10) << (float)seiSize/1024/1024 << endl;
 	cout << setw(10) << "AUD" << setw(10) << audCount << setw(10) << (float)audSize/1024/1024 << endl;
+	cout << setw(10) << "SLICE" << setw(10) << slicCount << setw(10) << (float)slicSize/1024/1024 << endl;
+	cout << setw(10) << "IDR" << setw(10) << idrCount << setw(10) << (float)idrSize/1024/1024 << endl;
+	cout << setw(10) << "AUX" << setw(10) << auxCount << setw(10) << (float)auxSize/1024/1024 << endl;
+	cout << setw(10) << "DPA" << setw(10) << dpaCount << setw(10) << (float)dpaSize/1024/1024 << endl;
+	cout << setw(10) << "DPB" << setw(10) << dpbCount << setw(10) << (float)dpbSize/1024/1024 << endl;
+	cout << setw(10) << "DPC" << setw(10) << dpcCount << setw(10) << (float)dpcSize/1024/1024 << endl;
 	cout << "×ÜºÄÊ±: " << timeTotal_diff << " ms" << endl;
 	cout << "------------------------------" << endl;
 
 	
-	pCount = 0, bCount = 0, iCount = 0, siCount = 0, spCount = 0, spsCount = 0, ppsCount = 0, seiCount = 0, audCount = 0;
-	pSize = 0, bSize = 0, iSize = 0, siSize = 0, spSize = 0, spsSize = 0, ppsSize = 0, seiSize = 0, audSize = 0;
+	pCount = 0, bCount = 0, iCount = 0, siCount = 0, spCount = 0, spsCount = 0, ppsCount = 0, seiCount = 0, audCount = 0, slicCount = 0, idrCount = 0, auxCount = 0, dpaCount = 0, dpbCount = 0, dpcCount = 0;;
+	pSize = 0, bSize = 0, iSize = 0, siSize = 0, spSize = 0, spsSize = 0, ppsSize = 0, seiSize = 0, audSize = 0, slicSize = 0, idrSize = 0, auxSize = 0, dpaSize = 0, dpbSize = 0, dpcSize = 0;;
 	NaluCount = 0;
 	NaluSize = 0;
 	NaluTotalSize = 0;
