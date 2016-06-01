@@ -38,7 +38,7 @@ void H264AnalysisDebug()
 		UINT32 nal_ref_idc = B8_VAL_BASE_R(nextByte, 1, 2);
 		NalUnitType nal_unit_type = /*B8_VAL_BASE_R(nextByte, 3, 5);*/h264Analysis.getNaluType(naluData);
 		UINT32 first_mb_in_slice = 0;
-		SliceType slice_type = /*0;*/h264Analysis.getSliceType(naluData);
+		SliceType slice_type = /*0;*/h264Analysis.getSliceType(naluData, NaluSize);
 		UINT32 pic_parameter_set_id = 0;
 		unsigned int egcDataPos = startCodeLen + 1;
 		unsigned int egcDataLen = NaluSize - egcDataPos;

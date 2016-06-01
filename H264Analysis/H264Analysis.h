@@ -114,8 +114,9 @@ public:
 	 * 描述:	获取帧类型
 	 * 返回值:	SliceType => 帧类型
 	 * 参数: 	char * naluData(in: 传入Nalu数据)
+	 * 参数: 	size_t naluLen(in: 传入Nalu长度)
 	 */
-	SliceType getSliceType(char *naluData);
+	SliceType getSliceType(char *naluData, size_t naluLen);
 
 	/**
 	 * 描述:	返回startCode长度

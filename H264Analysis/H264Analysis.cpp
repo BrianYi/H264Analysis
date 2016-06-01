@@ -1017,6 +1017,12 @@ STATUS H264Analysis::skipTo( short int persent )
 		m_pStreamBuf->tellgBase = 0;
 	}
 
+	// 找到下一个I帧，并将缓冲区指针定位到该I帧的头部前（若包含SPS,PPS，则指向SPS前）
+	size_t len = next_I_Nalu();
+	if (m_pStreamBuf->pos < len)
+		throw exception();
+	m_pStreamBuf->pos -= len;
+	
 #ifdef TIME_TEST
 	DWORD time_diff = GetTickCount() - time_beg;
 	m_debugFileStream << "skipTo " << time_diff << endl;
@@ -1046,13 +1052,13 @@ NalUnitType H264Analysis::getNaluType( char *naluData )
 // 描述:	获取帧类型
 // 返回值:	SliceType => 帧类型
 // 参数: 	char * naluData(in: 传入Nalu数据)
+// 参数: 	size_t naluLen(in: 传入Nalu长度)
 // 日期: 	2016/05/27
 // 作者: 	YJZ
 // 修改记录:
 //************************************
-SliceType H264Analysis::getSliceType( char *naluData )
+SliceType H264Analysis::getSliceType( char *naluData , size_t naluLen )
 {
-	size_t naluLen = 0;
 	int startCodeLen = 0;
 	unsigned char nextByte = 0;
 	NalUnitType nal_unit_type = NAL_FF_IGNORE;
@@ -1141,7 +1147,7 @@ STATUS H264Analysis::ueDecode(char *egcData, size_t len, UINT32 *codeNum, unsign
 	DWORD time_beg = GetTickCount();
 #endif
 	char *pEgcData = egcData;
-	char *pEgcDataBeg = egcData;
+/*	char *pEgcDataBeg = egcData;*/
 	int leadingZeroBits = -1;
 	unsigned int egcPtrPos = 0;
 	for (char b = 0; !b; leadingZeroBits++)
@@ -1152,7 +1158,7 @@ STATUS H264Analysis::ueDecode(char *egcData, size_t len, UINT32 *codeNum, unsign
 				return Failed;
 
 			m_lastByte = pEgcData[egcPtrPos];
-			egcPtrPos = pEgcData - pEgcDataBeg;
+			//egcPtrPos = pEgcData - pEgcDataBeg;
 			egcPtrPos++;
 		}
 		b = B8_VAL_BASE_R(m_lastByte, m_binPos, 1);	// read next bit
@@ -1168,7 +1174,7 @@ STATUS H264Analysis::ueDecode(char *egcData, size_t len, UINT32 *codeNum, unsign
 	}
 
 	// 指针还有剩余位置未读
-	int readBits = 0;
+	UINT32 readBits = 0;
 	int leftBits = 8 - m_binPos;
 	int leadingZeroBytes = 0;
 	if (m_binPos != 0)
@@ -1188,19 +1194,24 @@ STATUS H264Analysis::ueDecode(char *egcData, size_t len, UINT32 *codeNum, unsign
 				int leftLeadingZeroBits = leadingZeroBits - leftBits;
 				int leftLeadingZeroBytes = bits_get_byte_num(leftLeadingZeroBits);
 				char *p = new char[leftLeadingZeroBytes];
-				UINT32 golombCode = 0;
+			
 				if (egcPtrPos + leftLeadingZeroBytes >= len)
 					return Failed;
+
+				/**
+				 * 原最后字节剩余位置n位不够满足哥伦布解码，于是取出后面的若干字节(经计算出，需要后面多少字节才可解码出EGC),
+				 * 先将后面字节放入UINT32类型的golomb中，并字节倒序，进行提取，只提取要计算EGC而需要的若干位(位操作),
+				 * 然后将readBits向右移n位，用原最后字节剩余位置的n位进行填充(位操作)，最终得出readbits的二进制值
+				 */
 				memcpy(p, &pEgcData[egcPtrPos], leftLeadingZeroBytes);
 				egcPtrPos += leftLeadingZeroBytes;
-				memcpy((void*)&golombCode, p, leftLeadingZeroBytes);
-				bytes_reverse((char*)&golombCode, sizeof(golombCode));
+				memcpy((void*)&readBits, p, leftLeadingZeroBytes);
+				bytes_reverse((char*)&readBits, sizeof(readBits));
 
 				// 提取完整的Exp-Golomb-Code
-				golombCode &= B32_VAL_MASK(0, leftLeadingZeroBits);
-				golombCode = (golombCode>>leftBits)|(B32_VAL_BASE_L((UINT32)B8_VAL_BASE_L(m_lastByte, m_binPos), 24));
-				golombCode = B32_VAL_BASE_R(golombCode, 0, leadingZeroBits);
-				*codeNum = golombCode;
+				readBits &= B32_VAL_MASK(0, leftLeadingZeroBits);
+				readBits = (readBits>>leftBits)|(B32_VAL_BASE_L((UINT32)B8_VAL_BASE_L(m_lastByte, m_binPos), 24));
+				readBits = B32_VAL_BASE_R(readBits, 0, leadingZeroBits);
 
 				// 存放最后字节
 				m_lastByte = p[leftLeadingZeroBytes-1];
@@ -1223,18 +1234,17 @@ STATUS H264Analysis::ueDecode(char *egcData, size_t len, UINT32 *codeNum, unsign
 			int leftLeadingZeroBits = leadingZeroBits - leftBits;	
 			int leftLeadingZeroBytes = bits_get_byte_num(leftLeadingZeroBits); 
 			char *p = new char[leadingZeroBytes];
-			UINT32 golombCode = 0;
+			
  			if (egcPtrPos + leftLeadingZeroBytes >= len)
  				return Failed;
  			memcpy(p, &pEgcData[egcPtrPos], leftLeadingZeroBytes);
  			egcPtrPos += leftLeadingZeroBytes;
-			memcpy((void*)&golombCode, p, leadingZeroBytes);
-			bytes_reverse((char*)&golombCode, sizeof(golombCode));
+			memcpy((void*)&readBits, p, leadingZeroBytes);
+			bytes_reverse((char*)&readBits, sizeof(readBits));
 
 			// 提取完整的Exp-Golomb-Code
-			golombCode &= B32_VAL_MASK(0, leadingZeroBits);
-			golombCode = B32_VAL_BASE_R(golombCode, 0, leadingZeroBits);
-			*codeNum = golombCode;
+			readBits &= B32_VAL_MASK(0, leadingZeroBits);
+			readBits = B32_VAL_BASE_R(readBits, 0, leadingZeroBits);
 
 			// 存放最后字节
 			m_lastByte = p[leadingZeroBytes-1];
