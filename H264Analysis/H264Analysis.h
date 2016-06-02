@@ -20,14 +20,13 @@ public:
 	H264Analysis(void);
 	~H264Analysis(void);
 	/**
-	 * 描述:	获取数据流
+	 * 描述:	获取文件流
 	 * 返回值:	ifstream& 
 	 * 参数: 	const string & fileName
 	 */
 	ifstream& getOpenFile(const string &fileName);
 
 	/**
-	 * 函数名:	H264Analysis::clearStream
 	 * 描述:	关闭文件
 	 * 返回值:	void
 	 */
@@ -62,12 +61,13 @@ public:
 	size_t next_IDR_Nalu(char **naluData = NULL);
 
 	/**
-	 * 描述:	获取下一个包含I帧的Nalu, 并将数据放入参数naluData传出，完成后文件指针指向下一个Nalu的开头(naluData为空时，不获取数据，只返回长度)
+	 * 描述:	描述:	获取下一个包含I帧的Nalu(若前面有SPS,PPS或SEI则会将他们与I帧一起打包), 并将数据放入参数naluData传出，完成后文件指针指向下一个Nalu的开头(naluData为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => Nalu长度（包含startCode）
 	 * 参数: 	char * * naluData(out: 返回Nalu, 包含startCode, 为空时不获取数据)
+	 * 参数: 	unsigned int speed(in: 默认为1，代表正常速度找下一个I帧，speed为2时代表每2个I帧只播第一个I帧，后面依次类推)
 	 */
-	size_t next_I_Nalu(char **naluData = NULL);
-
+	size_t next_I_Nalu(char **naluData = NULL, unsigned int speed = 1);
+	
 	/**
 	 * 描述:	获取下一个包含P帧的Nalu, 并将数据放入参数naluData传出，完成后文件指针指向下一个Nalu的开头(naluData为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => Nalu长度（包含startCode）
@@ -137,6 +137,13 @@ public:
 
 public: // 当测试完毕后，需改为protected
 	/**
+	 * 描述:	获取下一个包含I帧的Nalu(若前面有SPS,PPS或SEI则会将他们与I帧一起打包), 并将数据放入参数naluData传出，完成后文件指针指向下一个Nalu的开头(naluData为空时，不获取数据，只返回长度)
+	 * 返回值:	size_t => Nalu长度（包含startCode）
+	 * 参数: 	char * * naluData(out: 返回Nalu, 包含startCode, 为空时不获取数据)
+	 */
+	size_t nextInalu(char **naluData = NULL);
+
+	/**
 	 * 描述:	读取接下来的len个字节
 	 * 返回值:	size_t => 成功读取的字节数
 	 * 参数: 	char * p(out: 传出读取的字节数据，需要调用者分配和释放内存)
@@ -156,6 +163,8 @@ public: // 当测试完毕后，需改为private
 	UINT8 m_lastByte;		///< 最后一次读的字节内容
 	PDataStream m_pStreamBuf;	///< 
 private:
+#ifdef TIME_TEST
 	ofstream m_debugFileStream; ///< 测试用
+#endif
 };
 #endif

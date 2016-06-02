@@ -28,8 +28,12 @@ void H264AnalysisDebug()
 	DWORD timeTotal_beg = GetTickCount();
 
 	char *naluData = NULL;
-	while (NaluSize = h264Analysis.nextNalu(&naluData))
+	while (NaluSize = h264Analysis.next_I_Nalu(&naluData, 2))
 	{
+		if (NaluCount == 144)
+		{
+			NaluCount = 144;
+		};
 		NaluCount++;
 		NaluTotalSize += NaluSize;
 		int startCodeLen = h264Analysis.scLen(naluData);
@@ -49,12 +53,6 @@ void H264AnalysisDebug()
 		case NAL_SLICE:
 		case NAL_IDR_SLICE:
 		case NAL_AUXILIARY_SLICE:
-// 			if (h264Analysis.ueDecode(&naluData[egcDataPos], egcDataLen, &first_mb_in_slice, &egcSize) == H264Analysis::Failed)
-// 				break;
-// 			if (h264Analysis.ueDecode(&naluData[egcDataPos + egcSize], egcDataLen - egcSize, &slice_type, &egcSize) == H264Analysis::Failed)
-// 				break;
-// 			h264Analysis.m_binPos = 0;
-// 			h264Analysis.m_lastByte = 0;
 			if (nal_unit_type == NAL_SLICE)
 			{
 				slicCount++;
@@ -180,7 +178,7 @@ void H264AnalysisDebug()
 	cout << left << setprecision(6) <<  setiosflags(ios::fixed);
 	cout << setw(10) << "Category" << setw(10) << "Number" << setw(12) << "Size(MB)" << setw(10) << "Time(ms)" << endl;
 	cout << "------------------------------------------" << endl;
-	//fileStream.seekg(ios::beg);
+
 	fileStream.seekg(ios::beg);
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
