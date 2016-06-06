@@ -135,7 +135,7 @@ public:
 	 */
 	STATUS ueDecode(char *egcData, size_t len, UINT32 *codeNum, unsigned int *egcSize);		///< 解码无符号整型指数哥伦布编码
 
-public: // 当测试完毕后，需改为protected
+private: // 当测试完毕后，需改为protected
 	/**
 	 * 描述:	获取下一个包含I帧的Nalu(若前面有SPS,PPS或SEI则会将他们与I帧一起打包), 并将数据放入参数naluData传出，完成后文件指针指向下一个Nalu的开头(naluData为空时，不获取数据，只返回长度)
 	 * 返回值:	size_t => Nalu长度（包含startCode）

@@ -28,12 +28,8 @@ void H264AnalysisDebug()
 	DWORD timeTotal_beg = GetTickCount();
 
 	char *naluData = NULL;
-	while (NaluSize = h264Analysis.next_I_Nalu(&naluData, 2))
+	while (NaluSize = h264Analysis.nextNalu(&naluData))
 	{
-		if (NaluCount == 144)
-		{
-			NaluCount = 144;
-		};
 		NaluCount++;
 		NaluTotalSize += NaluSize;
 		int startCodeLen = h264Analysis.scLen(naluData);
