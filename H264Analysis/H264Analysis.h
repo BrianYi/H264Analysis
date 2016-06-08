@@ -8,7 +8,6 @@
 #include <Windows.h>
 #include <iomanip>
 #include "H264PublicDef.h"
-using namespace std;
 
 //#define TIME_TEST // 统计每个函数的运行时间，测试用
 
@@ -24,7 +23,7 @@ public:
 	 * 返回值:	ifstream& 
 	 * 参数: 	const string & fileName
 	 */
-	ifstream& getOpenFile(const string &fileName);
+	std::ifstream& getOpenFile(const std::string &fileName);
 
 	/**
 	 * 描述:	关闭文件
@@ -157,14 +156,14 @@ private: // 当测试完毕后，需改为protected
 	 */
 	STATUS checkStreamBuf();
 public: // 当测试完毕后，需改为private
-	ifstream m_fileStream;	///< 文件流
+	std::ifstream m_fileStream;	///< 文件流
 	size_t m_len;	///< 流数据长度
 	char m_binPos;		///< 二进制指针的位置, 始终指向要读的下一位(8位, 从0开始, 值为0~7)
 	UINT8 m_lastByte;		///< 最后一次读的字节内容
 	PDataStream m_pStreamBuf;	///< 
 private:
 #ifdef TIME_TEST
-	ofstream m_debugFileStream; ///< 测试用
+	std::ofstream m_debugFileStream; ///< 测试用
 #endif
 };
 #endif

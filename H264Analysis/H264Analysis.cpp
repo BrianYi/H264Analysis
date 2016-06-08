@@ -50,7 +50,7 @@ H264Analysis::~H264Analysis(void)
 // 作者: 	YJZ
 // 修改记录:
 //************************************
-ifstream& H264Analysis::getOpenFile( const string &fileName )
+std::ifstream& H264Analysis::getOpenFile( const std::string &fileName )
 {
 #ifdef TIME_TEST
 	DWORD time_beg = GetTickCount();
@@ -63,10 +63,10 @@ ifstream& H264Analysis::getOpenFile( const string &fileName )
 	m_binPos = 0;
 
 	/// 文件流数据存放到流结构中
-	m_fileStream.open(fileName.c_str(), ios_base::binary);
-	m_fileStream.seekg(0, ios_base::end);
+	m_fileStream.open(fileName.c_str(), std::ios_base::binary);
+	m_fileStream.seekg(0, std::ios_base::end);
 	m_len = m_fileStream.tellg();
-	m_fileStream.seekg(ios_base::beg);
+	m_fileStream.seekg(std::ios_base::beg);
 #ifdef TIME_TEST
 	DWORD time_diff = GetTickCount() - time_beg;
 	m_debugFileStream << "getOpenFile " << time_diff << endl;
@@ -448,7 +448,7 @@ size_t H264Analysis::next_IDR_Nalu( char **naluData /*= NULL*/ )
 						m_fileStream.seekg(flagFilePtrPos);
 						*naluData = new char[naluLen];
 						if (readNextBytes(*naluData, naluLen) < naluLen)
-							throw exception();
+							throw std::exception();
 						m_fileStream.seekg(filePtrPos);
 						flag = false;
 						flagCount = 0;
@@ -509,7 +509,7 @@ size_t H264Analysis::next_IDR_Nalu( char **naluData /*= NULL*/ )
 size_t H264Analysis::next_I_Nalu( char **naluData /*= NULL*/, unsigned int speed /*= 1*/)
 {
 	if (speed <= 0)
-		throw exception();
+		throw std::exception();
 
 	size_t len = nextInalu(naluData);
 	while (--speed)
@@ -909,7 +909,7 @@ STATUS H264Analysis::skipTo( short int persent )
 	// 找到下一个I帧，并将缓冲区指针定位到该I帧的头部前（若包含SPS,PPS，则指向SPS前）
 	size_t len = next_I_Nalu();
 	if (m_pStreamBuf->pos < len)
-		throw exception();
+		throw std::exception();
 	m_pStreamBuf->pos -= len;
 	
 #ifdef TIME_TEST
@@ -966,7 +966,7 @@ SliceType H264Analysis::getSliceType( char *naluData , size_t naluLen )
 		if (ueDecode(&naluData[egcDataPos], egcDataLen, &first_mb_in_slice, &egcSize) == Failed || 
 			ueDecode(&naluData[egcDataPos + egcSize], egcDataLen, (UINT32 *)&slice_type, &egcSize) == Failed)
 		{
-			throw exception();
+			throw std::exception();
 		}
 		m_binPos = 0;	///< 二进制指针位置归零
 		m_lastByte = 0;	///< 字节归零
@@ -1002,10 +1002,10 @@ size_t H264Analysis::scLen(char *p)
 			p[3] == 0x01)
 			len = 4;
 		else
-			throw exception();
+			throw std::exception();
 	} 
 	else
-		throw exception();
+		throw std::exception();
 
 #ifdef TIME_TEST
 	DWORD time_diff = GetTickCount() - time_beg;
@@ -1058,7 +1058,7 @@ STATUS H264Analysis::ueDecode(char *egcData, size_t len, UINT32 *codeNum, unsign
 
 	if (leadingZeroBits > 32)
 	{
-		throw exception();
+		throw std::exception();
 		return -1;
 	}
 
@@ -1242,7 +1242,7 @@ size_t H264Analysis::nextInalu( char **naluData /*= NULL*/ )
 						m_fileStream.seekg(flagFilePtrPos);
 						*naluData = new char[naluLen];
 						if (readNextBytes(*naluData, naluLen) < naluLen)
-							throw exception();
+							throw std::exception();
 						m_fileStream.seekg(filePtrPos);
 						flag = false;
 						flagCount = 0;

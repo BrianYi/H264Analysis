@@ -1,6 +1,7 @@
 #include "H264Analysis/H264Analysis.h"
 #include <string>
-const string g_fileNameStr = "../movie/500MTest.h264";
+using namespace std;
+const string g_fileNameStr = "../movie/264.h264";
 
 void H264AnalysisDebug();	// ²âÊÔº¯Êý
 
