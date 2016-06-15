@@ -29,7 +29,7 @@ public:
 	 * 描述:	关闭文件
 	 * 返回值:	void
 	 */
-	void closeFile();
+	inline void closeFile();
 
 	/**
 	 * 描述:	获取下一个Nalu, 并将数据放入参数naluData传出，完成后文件指针指向下一个Nalu的开头(naluData为空时，不获取数据，只返回长度)
@@ -100,14 +100,14 @@ public:
 	 * 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
 	 * 参数: 	short int persent(in: 0~100, 传入要跳转的百分比)
 	 */
-	STATUS skipTo(short int persent);
+	inline STATUS skipTo(short int persent);
 	
 	/**
 	 * 描述:	获取Nalu的类型
 	 * 返回值:	NalUnitType => Nalu类型
 	 * 参数: 	char * naluData(in: 传入Nalu数据)
 	 */
-	NalUnitType getNaluType(char *naluData);
+	inline NalUnitType getNaluType(char *naluData);
 
 	/**
 	 * 描述:	获取帧类型
@@ -122,7 +122,7 @@ public:
 	 * 返回值:	size_t => startCode长度
 	 * 参数: 	char * p
 	 */
-	size_t scLen(char *p);
+	inline size_t scLen(char *p);
 
 	/**
 	 * 描述:	解码Exp-Golomb-Code(指数哥伦布编码)
@@ -133,7 +133,13 @@ public:
 	 * 参数:	unsigned int * egcSize(out: 传出解码用的字节数)
 	 */
 	STATUS ueDecode(char *egcData, size_t len, UINT32 *codeNum, unsigned int *egcSize);		///< 解码无符号整型指数哥伦布编码
+	/**
+	 * 描述:	获取数据缓冲区
+	 * 返回值:	PDataSteam
+	 */
+	PDataStream getStreamBuf() { return m_pStreamBuf; }
 
+	size_t get_NALU_count();
 private: // 当测试完毕后，需改为protected
 	/**
 	 * 描述:	获取下一个包含I帧的Nalu(若前面有SPS,PPS或SEI则会将他们与I帧一起打包), 并将数据放入参数naluData传出，完成后文件指针指向下一个Nalu的开头(naluData为空时，不获取数据，只返回长度)
@@ -148,16 +154,22 @@ private: // 当测试完毕后，需改为protected
 	 * 参数: 	char * p(out: 传出读取的字节数据，需要调用者分配和释放内存)
 	 * 参数: 	int len(in: 读取字节的长度)
 	 */
-	size_t readNextBytes(char *p, int len);///< 读取len个字节
+	inline size_t readNextBytes(char *p, int len);///< 读取len个字节
 
 	/**
 	 * 描述:	检查缓冲区的数据是否还够，若不够则再次读取BUFSIZE字节的文件内容
 	 * 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
 	 */
-	STATUS checkStreamBuf();
+	inline STATUS checkStreamBuf();
+
+	/**
+	 * 描述:	清空缓冲区
+	 * 返回值:	void
+	 */
+	inline void clearStreamBuf();
 public: // 当测试完毕后，需改为private
 	std::ifstream m_fileStream;	///< 文件流
-	size_t m_len;	///< 流数据长度
+	size_t m_fileLen;	///< 流数据长度
 	char m_binPos;		///< 二进制指针的位置, 始终指向要读的下一位(8位, 从0开始, 值为0~7)
 	UINT8 m_lastByte;		///< 最后一次读的字节内容
 	PDataStream m_pStreamBuf;	///< 

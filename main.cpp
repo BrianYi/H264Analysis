@@ -1,16 +1,74 @@
 #include "H264Analysis/H264Analysis.h"
 #include <string>
+#include <algorithm>
 using namespace std;
-const string g_fileNameStr = "../movie/264.h264";
+const string g_fileNameStr = "../movie/500MTest.h264";
 
 void H264AnalysisDebug();	// ²âÊÔº¯Êý
 
 
+//#define ALL_IN_MEM_GET_NALU_COUNT
 
 int main()
 {
-	H264AnalysisDebug();
+	//H264AnalysisDebug();
 
+	H264Analysis h264Analysis;
+	ifstream& fileStream = h264Analysis.getOpenFile(g_fileNameStr);
+	char *naluData = NULL;
+	int naluSize = 0;
+	int naluCount = 0;
+	DWORD timeTotal_beg = GetTickCount();
+	naluCount = h264Analysis.get_NALU_count();
+	DWORD timeTotal_diff = GetTickCount() - timeTotal_beg;
+	cout << naluCount << " time: " << timeTotal_diff << endl;
+	h264Analysis.closeFile();
+
+#ifdef ALL_IN_MEM_GET_NALU_COUNT
+	size_t len = 0;
+	ifstream is;
+	is.open(g_fileNameStr.c_str(), std::ios_base::binary);
+	is.seekg(0, std::ios_base::end);
+	len = is.tellg();
+	is.seekg(std::ios_base::beg);
+	PDataStream pDataStream = new DataStream;
+	pDataStream->buf = new char[len];
+	pDataStream->len = len;
+	pDataStream->pos = 0;
+	pDataStream->tellgBase = 0;
+	is.read(pDataStream->buf, len);
+	is.close();
+	char *p = pDataStream->buf;
+	int naluCount = 0;
+	DWORD timeTotal_beg = GetTickCount();
+	for (int i = 0; i < len; )
+	{
+		if (p[i] == 0x00 && 
+			p[i+1] == 0x00)
+		{
+			if (p[i+2] == 0x01)
+			{
+				i += 3;
+				naluCount++;
+			}
+			else if (p[i+2] == 0x00 &&
+				p[i+3] == 0x01)
+			{
+				i += 4;
+				naluCount++;
+			}
+			else
+				i+=2;
+		}
+		else
+			i++;
+	}
+	DWORD timeTotal_diff = GetTickCount() - timeTotal_beg;
+	cout << naluCount << " time: " << timeTotal_diff << endl;
+	delete pDataStream->buf;
+	delete pDataStream;
+#endif
+	
 	return 0;
 }
 
@@ -137,7 +195,7 @@ void H264AnalysisDebug()
 			break;
 		}
 
-		delete [] naluData;
+		delete naluData;
 		naluData = NULL;
 	}
 	DWORD timeTotal_diff = GetTickCount() - timeTotal_beg;

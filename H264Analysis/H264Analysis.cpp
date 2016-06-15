@@ -3,7 +3,7 @@
 H264Analysis::H264Analysis(void)
 {
 	/// 初始化流结构
-	m_len = 0;
+	m_fileLen = 0;
 	m_lastByte = 0;
 	m_binPos = 0;
 
@@ -28,7 +28,7 @@ H264Analysis::~H264Analysis(void)
 	{
 		if (m_pStreamBuf->buf)
 		{
-			delete [] m_pStreamBuf->buf;
+			delete m_pStreamBuf->buf;
 			m_pStreamBuf->buf = NULL;
 		}
 		delete m_pStreamBuf;
@@ -58,14 +58,14 @@ std::ifstream& H264Analysis::getOpenFile( const std::string &fileName )
 	/// 初始化流结构
 	if (m_fileStream.is_open())
 		m_fileStream.close();
-	m_len = 0;
+	m_fileLen = 0;
 	m_lastByte = 0;
 	m_binPos = 0;
 
 	/// 文件流数据存放到流结构中
 	m_fileStream.open(fileName.c_str(), std::ios_base::binary);
 	m_fileStream.seekg(0, std::ios_base::end);
-	m_len = m_fileStream.tellg();
+	m_fileLen = m_fileStream.tellg();
 	m_fileStream.seekg(std::ios_base::beg);
 #ifdef TIME_TEST
 	DWORD time_diff = GetTickCount() - time_beg;
@@ -84,7 +84,7 @@ std::ifstream& H264Analysis::getOpenFile( const std::string &fileName )
 // 作者: 	YJZ
 // 修改记录:
 //************************************
-void H264Analysis::closeFile()
+inline void H264Analysis::closeFile()
 {
 #ifdef TIME_TEST
 	DWORD time_beg = GetTickCount();
@@ -93,7 +93,7 @@ void H264Analysis::closeFile()
 	{
 		m_fileStream.close();
 
-		m_len = 0;
+		m_fileLen = 0;
 		m_binPos = 0;
 		m_lastByte = 0;
 	}
@@ -247,9 +247,9 @@ size_t H264Analysis::next_SPS_Nalu( char **naluData )
 	 * 1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
 	 * 2. 获取下一字节，判断Nalu类型
 	 * 3. 若为要找类型，则判断naluData是否为空:
-	 *		为空：则 delete [] naluDataTmp
+	 *		为空：则 delete naluDataTmp
 	 *		非空：则 *naluData = naluDataTmp
-	 * 4. 若不为要找的类型，则 delete [] naluDataTmp
+	 * 4. 若不为要找的类型，则 delete naluDataTmp
 	 * 5. 返回长度
 	 */
 
@@ -271,9 +271,9 @@ size_t H264Analysis::next_SPS_Nalu( char **naluData )
 			// 3. 若为要找类型，则判断naluData是否为空:
 			if (naluData) ///< 非空：则 *naluData = naluDataTmp
 				*naluData = naluDataTmp;
-			else	///< 为空：则 delete [] naluDataTmp
+			else	///< 为空：则 delete naluDataTmp
 			{
-				delete [] naluDataTmp;
+				delete naluDataTmp;
 				naluDataTmp = NULL;
 			}
 
@@ -286,7 +286,7 @@ size_t H264Analysis::next_SPS_Nalu( char **naluData )
 		}
 		else
 		{
-			delete [] naluDataTmp;
+			delete naluDataTmp;
 			naluDataTmp = NULL;
 		}
 		
@@ -313,9 +313,9 @@ size_t H264Analysis::next_PPS_Nalu( char **naluData )
 	 * 1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
 	 * 2. 获取下一字节，判断Nalu类型
 	 * 3. 若为要找类型，则判断naluData是否为空:
-	 *		为空：则 delete [] naluDataTmp
+	 *		为空：则 delete naluDataTmp
 	 *		非空：则 *naluData = naluDataTmp
-	 * 4. 若不为要找的类型，则 delete [] naluDataTmp
+	 * 4. 若不为要找的类型，则 delete naluDataTmp
 	 * 5. 返回长度
 	 */
 
@@ -337,9 +337,9 @@ size_t H264Analysis::next_PPS_Nalu( char **naluData )
 			// 3. 若为要找类型，则判断naluData是否为空:
 			if (naluData) ///< 非空：则 *naluData = naluDataTmp
 				*naluData = naluDataTmp;
-			else	///< 为空：则 delete [] naluDataTmp
+			else	///< 为空：则 delete naluDataTmp
 			{
-				delete [] naluDataTmp;
+				delete naluDataTmp;
 				naluDataTmp = NULL;
 			}
 
@@ -352,7 +352,7 @@ size_t H264Analysis::next_PPS_Nalu( char **naluData )
 		}
 		else
 		{
-			delete [] naluDataTmp;
+			delete naluDataTmp;
 			naluDataTmp = NULL;
 		}
 		
@@ -378,9 +378,9 @@ size_t H264Analysis::next_IDR_Nalu( char **naluData /*= NULL*/ )
 	 * 1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
 	 * 2. 获取下一字节，判断Nalu类型
 	 * 3. 若为要找类型，则判断naluData是否为空:
-	 *		为空：则 delete [] naluDataTmp
+	 *		为空：则 delete naluDataTmp
 	 *		非空：则 *naluData = naluDataTmp
-	 * 4. 若不为要找的类型，则 delete [] naluDataTmp
+	 * 4. 若不为要找的类型，则 delete naluDataTmp
 	 * 5. 返回长度
 	 */
 
@@ -452,13 +452,13 @@ size_t H264Analysis::next_IDR_Nalu( char **naluData /*= NULL*/ )
 						m_fileStream.seekg(filePtrPos);
 						flag = false;
 						flagCount = 0;
-						delete [] naluDataTmp;
+						delete naluDataTmp;
 						naluDataTmp = NULL;
 					}
 					else
 						*naluData = naluDataTmp;
 				}
-				else	///< 为空：则 delete [] naluDataTmp
+				else	///< 为空：则 delete naluDataTmp
 				{
 					if (flag && flagCount)
 					{
@@ -466,7 +466,7 @@ size_t H264Analysis::next_IDR_Nalu( char **naluData /*= NULL*/ )
 						flag = false;
 						flagCount = 0;
 					}
-					delete [] naluDataTmp;
+					delete naluDataTmp;
 					naluDataTmp = NULL;
 				}
 				// 4. 返回长度
@@ -474,7 +474,7 @@ size_t H264Analysis::next_IDR_Nalu( char **naluData /*= NULL*/ )
 			}
 			else
 			{
-				delete [] naluDataTmp;
+				delete naluDataTmp;
 				naluDataTmp = NULL;
 			}
 
@@ -485,7 +485,7 @@ size_t H264Analysis::next_IDR_Nalu( char **naluData /*= NULL*/ )
 		}
 		else
 		{
-			delete [] naluDataTmp;
+			delete naluDataTmp;
 			naluDataTmp = NULL;
 		}
 		
@@ -535,9 +535,9 @@ size_t H264Analysis::next_P_Nalu( char **naluData )
 	 * 1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
 	 * 2. 获取下一字节，判断Nalu类型
 	 * 3. 若为要找类型，则判断naluData是否为空:
-	 *		为空：则 delete [] naluDataTmp
+	 *		为空：则 delete naluDataTmp
 	 *		非空：则 *naluData = naluDataTmp
-	 * 4. 若不为要找的类型，则 delete [] naluDataTmp
+	 * 4. 若不为要找的类型，则 delete naluDataTmp
 	 * 5. 返回长度
 	 */
 
@@ -576,9 +576,9 @@ size_t H264Analysis::next_P_Nalu( char **naluData )
 				// 3. 若为要找类型，则判断naluData是否为空:
 				if (naluData) ///< 非空：则 *naluData = naluDataTmp
 					*naluData = naluDataTmp;
-				else	///< 为空：则 delete [] naluDataTmp
+				else	///< 为空：则 delete naluDataTmp
 				{
-					delete [] naluDataTmp;
+					delete naluDataTmp;
 					naluDataTmp = NULL;
 				}
 				// 4. 返回长度
@@ -586,7 +586,7 @@ size_t H264Analysis::next_P_Nalu( char **naluData )
 			}
 			else
 			{
-				delete [] naluDataTmp;
+				delete naluDataTmp;
 				naluDataTmp = NULL;
 			}
 			
@@ -598,7 +598,7 @@ size_t H264Analysis::next_P_Nalu( char **naluData )
 		}
 		else
 		{
-			delete [] naluDataTmp;
+			delete naluDataTmp;
 			naluDataTmp = NULL;
 		}
 		
@@ -625,9 +625,9 @@ size_t H264Analysis::next_B_Nalu( char **naluData )
 	 * 1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
 	 * 2. 获取下一字节，判断Nalu类型
 	 * 3. 若为要找类型，则判断naluData是否为空:
-	 *		为空：则 delete [] naluDataTmp
+	 *		为空：则 delete naluDataTmp
 	 *		非空：则 *naluData = naluDataTmp
-	 * 4. 若不为要找的类型，则 delete [] naluDataTmp
+	 * 4. 若不为要找的类型，则 delete naluDataTmp
 	 * 5. 返回长度
 	 */
 
@@ -666,9 +666,9 @@ size_t H264Analysis::next_B_Nalu( char **naluData )
 				// 3. 若为要找类型，则判断naluData是否为空:
 				if (naluData) ///< 非空：则 *naluData = naluDataTmp
 					*naluData = naluDataTmp;
-				else	///< 为空：则 delete [] naluDataTmp
+				else	///< 为空：则 delete naluDataTmp
 				{
-					delete [] naluDataTmp;
+					delete naluDataTmp;
 					naluDataTmp = NULL;
 				}
 				// 4. 返回长度
@@ -676,7 +676,7 @@ size_t H264Analysis::next_B_Nalu( char **naluData )
 			}
 			else
 			{
-				delete [] naluDataTmp;
+				delete naluDataTmp;
 				naluDataTmp = NULL;
 			}
 
@@ -687,7 +687,7 @@ size_t H264Analysis::next_B_Nalu( char **naluData )
 		}
 		else
 		{
-			delete [] naluDataTmp;
+			delete naluDataTmp;
 			naluDataTmp = NULL;
 		}
 		
@@ -714,9 +714,9 @@ size_t H264Analysis::next_SI_Nalu( char **naluData )
 	 * 1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
 	 * 2. 获取下一字节，判断Nalu类型
 	 * 3. 若为要找类型，则判断naluData是否为空:
-	 *		为空：则 delete [] naluDataTmp
+	 *		为空：则 delete naluDataTmp
 	 *		非空：则 *naluData = naluDataTmp
-	 * 4. 若不为要找的类型，则 delete [] naluDataTmp
+	 * 4. 若不为要找的类型，则 delete naluDataTmp
 	 * 5. 返回长度
 	 */
 
@@ -755,9 +755,9 @@ size_t H264Analysis::next_SI_Nalu( char **naluData )
 				// 3. 若为要找类型，则判断naluData是否为空:
 				if (naluData) ///< 非空：则 *naluData = naluDataTmp
 					*naluData = naluDataTmp;
-				else	///< 为空：则 delete [] naluDataTmp
+				else	///< 为空：则 delete naluDataTmp
 				{
-					delete [] naluDataTmp;
+					delete naluDataTmp;
 					naluDataTmp = NULL;
 				}
 				// 4. 返回长度
@@ -765,7 +765,7 @@ size_t H264Analysis::next_SI_Nalu( char **naluData )
 			}
 			else
 			{
-				delete [] naluDataTmp;
+				delete naluDataTmp;
 				naluDataTmp = NULL;
 			}
 
@@ -776,7 +776,7 @@ size_t H264Analysis::next_SI_Nalu( char **naluData )
 		}
 		else
 		{
-			delete [] naluDataTmp;
+			delete naluDataTmp;
 			naluDataTmp = NULL;
 		}
 		
@@ -803,9 +803,9 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 	 * 1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
 	 * 2. 获取下一字节，判断Nalu类型
 	 * 3. 若为要找类型，则判断naluData是否为空:
-	 *		为空：则 delete [] naluDataTmp
+	 *		为空：则 delete naluDataTmp
 	 *		非空：则 *naluData = naluDataTmp
-	 * 4. 若不为要找的类型，则 delete [] naluDataTmp
+	 * 4. 若不为要找的类型，则 delete naluDataTmp
 	 * 5. 返回长度
 	 */
 
@@ -844,9 +844,9 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 				// 3. 若为要找类型，则判断naluData是否为空:
 				if (naluData) ///< 非空：则 *naluData = naluDataTmp
 					*naluData = naluDataTmp;
-				else	///< 为空：则 delete [] naluDataTmp
+				else	///< 为空：则 delete naluDataTmp
 				{
-					delete [] naluDataTmp;
+					delete naluDataTmp;
 					naluDataTmp = NULL;
 				}
 				// 4. 返回长度
@@ -854,7 +854,7 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 			}
 			else
 			{
-				delete [] naluDataTmp;
+				delete naluDataTmp;
 				naluDataTmp = NULL;
 			}
 
@@ -865,7 +865,7 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 		}
 		else
 		{
-			delete [] naluDataTmp;
+			delete naluDataTmp;
 			naluDataTmp = NULL;
 		}
 		
@@ -884,7 +884,7 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 // 作者: 	YJZ
 // 修改记录:
 //************************************
-STATUS H264Analysis::skipTo( short int persent )
+inline STATUS H264Analysis::skipTo( short int persent )
 {
 #ifdef TIME_TEST
 	DWORD time_beg = GetTickCount();
@@ -893,18 +893,11 @@ STATUS H264Analysis::skipTo( short int persent )
 	if (persent < 0 || persent > 100)
 		return Failed;
 
-	size_t pos = m_len * (persent * 0.01);
+	size_t pos = m_fileLen * (persent * 0.01);
 	m_fileStream.seekg(pos);
 	
 	// 清空缓存
-	if (m_pStreamBuf->buf)
-	{
-		delete [] m_pStreamBuf->buf;
-		m_pStreamBuf->buf = NULL;
-		m_pStreamBuf->len = 0;
-		m_pStreamBuf->pos = 0;
-		m_pStreamBuf->tellgBase = 0;
-	}
+	clearStreamBuf();
 
 	// 找到下一个I帧，并将缓冲区指针定位到该I帧的头部前（若包含SPS,PPS，则指向SPS前）
 	size_t len = next_I_Nalu();
@@ -931,7 +924,7 @@ STATUS H264Analysis::skipTo( short int persent )
 // 作者: 	YJZ
 // 修改记录:
 //************************************
-NalUnitType H264Analysis::getNaluType( char *naluData )
+inline NalUnitType H264Analysis::getNaluType( char *naluData )
 {
 	return (NalUnitType)B8_VAL_BASE_R(naluData[scLen(naluData)], 3, 5);
 }
@@ -986,7 +979,7 @@ SliceType H264Analysis::getSliceType( char *naluData , size_t naluLen )
 // 作者: 	YJZ
 // 修改记录:
 //************************************
-size_t H264Analysis::scLen(char *p)
+inline size_t H264Analysis::scLen(char *p)
 {
 #ifdef TIME_TEST
 	DWORD time_beg = GetTickCount();
@@ -1104,7 +1097,7 @@ STATUS H264Analysis::ueDecode(char *egcData, size_t len, UINT32 *codeNum, unsign
 
 				// 存放最后字节
 				m_lastByte = p[leftLeadingZeroBytes-1];
-				delete [] p;
+				delete p;
 			}
 			m_binPos += leadingZeroBits;
 			m_binPos %= 8;
@@ -1137,7 +1130,7 @@ STATUS H264Analysis::ueDecode(char *egcData, size_t len, UINT32 *codeNum, unsign
 
 			// 存放最后字节
 			m_lastByte = p[leadingZeroBytes-1];
-			delete [] p;
+			delete p;
 
 			m_binPos += leadingZeroBits;
 			m_binPos %= 8;
@@ -1153,6 +1146,41 @@ STATUS H264Analysis::ueDecode(char *egcData, size_t len, UINT32 *codeNum, unsign
 	*egcSize = egcPtrPos; ///< 返回解码EGC时读取的字节数
 	return Success;
 }
+
+size_t H264Analysis::get_NALU_count()
+{
+	size_t naluCount = 0;
+	size_t filePtrPos = m_fileStream.tellg();	// 保存文件指针位置
+	m_fileStream.seekg(0);
+	size_t i = 0;
+	size_t startCodeLen = 0;
+	char *p = NULL;
+	while (true)
+	{
+		if (p >= m_pStreamBuf->buf+m_pStreamBuf->len)
+		{
+			if (checkStreamBuf() == Failed)
+				break;
+			p = m_pStreamBuf->buf;
+			m_pStreamBuf->pos = m_pStreamBuf->len;
+		}
+
+		if (*p == 0x00)
+			startCodeLen++;
+		else if (*p == 0x01 && (startCodeLen == 2 || startCodeLen == 3))
+		{
+			startCodeLen = 0;
+			naluCount++;
+		}
+		else
+			startCodeLen = 0;
+		p++;
+	}
+	clearStreamBuf();
+	m_fileStream.seekg(filePtrPos);	// 还原文件指针位置
+	return naluCount;
+}
+
 
 //************************************
 // 函数名:	H264Analysis::next_I_Nalu
@@ -1172,9 +1200,9 @@ size_t H264Analysis::nextInalu( char **naluData /*= NULL*/ )
 	 * 1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
 	 * 2. 获取下一字节，判断Nalu类型
 	 * 3. 若为要找类型，则判断naluData是否为空:
-	 *		为空：则 delete [] naluDataTmp
+	 *		为空：则 delete naluDataTmp
 	 *		非空：则 *naluData = naluDataTmp
-	 * 4. 若不为要找的类型，则 delete [] naluDataTmp
+	 * 4. 若不为要找的类型，则 delete naluDataTmp
 	 * 5. 返回长度
 	 */
 
@@ -1246,13 +1274,13 @@ size_t H264Analysis::nextInalu( char **naluData /*= NULL*/ )
 						m_fileStream.seekg(filePtrPos);
 						flag = false;
 						flagCount = 0;
-						delete [] naluDataTmp;
+						delete naluDataTmp;
 						naluDataTmp = NULL;
 					}
 					else
 						*naluData = naluDataTmp;
 				}
-				else	///< 为空：则 delete [] naluDataTmp
+				else	///< 为空：则 delete naluDataTmp
 				{
 					if (flag && flagCount)
 					{
@@ -1260,7 +1288,7 @@ size_t H264Analysis::nextInalu( char **naluData /*= NULL*/ )
 						flag = false;
 						flagCount = 0;
 					}
-					delete [] naluDataTmp;
+					delete naluDataTmp;
 					naluDataTmp = NULL;
 				}
 				// 4. 返回长度
@@ -1268,7 +1296,7 @@ size_t H264Analysis::nextInalu( char **naluData /*= NULL*/ )
 			}
 			else
 			{
-				delete [] naluDataTmp;
+				delete naluDataTmp;
 				naluDataTmp = NULL;
 			}
 
@@ -1279,7 +1307,7 @@ size_t H264Analysis::nextInalu( char **naluData /*= NULL*/ )
 		}
 		else
 		{
-			delete [] naluDataTmp;
+			delete naluDataTmp;
 			naluDataTmp = NULL;
 		}
 		
@@ -1299,16 +1327,16 @@ size_t H264Analysis::nextInalu( char **naluData /*= NULL*/ )
 // 作者: 	YJZ
 // 修改记录:
 //************************************
-size_t H264Analysis::readNextBytes( char *p, int len)
+inline size_t H264Analysis::readNextBytes( char *p, int len)
 {
 #ifdef TIME_TEST
 	DWORD time_beg = GetTickCount();
 #endif
 	size_t readLen = len;
 	size_t filePtrPos = m_fileStream.tellg();
-	if (filePtrPos + len > m_len)
+	if (filePtrPos + len > m_fileLen)
 	{
-		readLen = m_len - filePtrPos;
+		readLen = m_fileLen - filePtrPos;
 		m_fileStream.read(p, readLen);
 	}
 	else
@@ -1332,21 +1360,14 @@ size_t H264Analysis::readNextBytes( char *p, int len)
 // 作者: 	YJZ
 // 修改记录:
 //************************************
-STATUS H264Analysis::checkStreamBuf()
+inline STATUS H264Analysis::checkStreamBuf()
 {
 	if (m_pStreamBuf->pos >= m_pStreamBuf->len) 
 	{
-		if (m_pStreamBuf->buf)
-		{
-			delete [] m_pStreamBuf->buf;
-			m_pStreamBuf->buf = NULL;
-			m_pStreamBuf->len = 0;
-			m_pStreamBuf->pos = 0;
-			m_pStreamBuf->tellgBase = 0;
-		}
+		clearStreamBuf();
 
 		m_pStreamBuf->tellgBase = m_fileStream.tellg();
-		if (m_pStreamBuf->tellgBase >= m_len)	///< 是否到达文件结尾
+		if (m_pStreamBuf->tellgBase >= m_fileLen)	///< 是否到达文件结尾
 			return Failed;
 
 		m_pStreamBuf->buf = new char[BUFSIZE];
@@ -1354,4 +1375,24 @@ STATUS H264Analysis::checkStreamBuf()
 		m_pStreamBuf->pos = 0;
 	}
 	return Success;
+}
+
+//************************************
+// 函数名:	H264Analysis::clearStreamBuf
+// 描述:	清空缓冲区
+// 返回值:	void
+// 日期: 	2016/06/15
+// 作者: 	YJZ
+// 修改记录:
+//************************************
+inline void H264Analysis::clearStreamBuf()
+{
+	if (m_pStreamBuf->buf)
+	{
+		delete m_pStreamBuf->buf;
+		m_pStreamBuf->buf = NULL;
+		m_pStreamBuf->len = 0;
+		m_pStreamBuf->pos = 0;
+		m_pStreamBuf->tellgBase = 0;
+	}
 }
