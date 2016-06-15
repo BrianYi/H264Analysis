@@ -139,6 +139,10 @@ public:
 	 */
 	PDataStream getStreamBuf() { return m_pStreamBuf; }
 
+	/**
+	 * 描述:	获取NALU总数
+	 * 返回值:	size_t
+	 */
 	size_t get_NALU_count();
 private: // 当测试完毕后，需改为protected
 	/**

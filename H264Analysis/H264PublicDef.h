@@ -46,22 +46,24 @@ const size_t BUFSIZE = 10 * 1024 * 1024;	// 一次读取的字节数
 // 流结构
 // 
 typedef struct { 
-	char *buf;			///< 流数据缓存区
+	char *beg;			///< 流数据缓存区头
+	char *end;			///< 流数据缓存区尾
+	char *p;			///< 流数据缓存区指针
 	unsigned int len;	///< 流数据长度
-	unsigned int pos;	///< 流数据指针当前位置
+	/*unsigned int pos;	///< 流数据指针当前位置*/
 	unsigned int tellgBase;	///< 缓冲区块在文件流中的位置
 } DataStream, *PDataStream;	
 
 //
 // SPS结构
 // 
-typedef struct {
-	unsigned char profile_idc;
-	bool constraint_set0_flag;
-	/**
-	 * 未完成
-	 */
-}SPS, *PSPS;
+// typedef struct {
+// 	unsigned char profile_idc;
+// 	bool constraint_set0_flag;
+// 	/**
+// 	 * 未完成
+// 	 */
+// }SPS, *PSPS;
 
 
 //

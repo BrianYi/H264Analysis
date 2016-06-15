@@ -8,8 +8,9 @@ H264Analysis::H264Analysis(void)
 	m_binPos = 0;
 
 	m_pStreamBuf = new DataStream;
-	m_pStreamBuf->buf = NULL;
-	m_pStreamBuf->pos = 0;
+	m_pStreamBuf->beg = NULL;
+	m_pStreamBuf->end = NULL;
+	m_pStreamBuf->p   = NULL;
 	m_pStreamBuf->len = 0;
 	m_pStreamBuf->tellgBase = 0;
 
@@ -26,10 +27,14 @@ H264Analysis::~H264Analysis(void)
 
 	if (m_pStreamBuf)
 	{
-		if (m_pStreamBuf->buf)
+		if (m_pStreamBuf->beg)
 		{
-			delete m_pStreamBuf->buf;
-			m_pStreamBuf->buf = NULL;
+			delete m_pStreamBuf->beg;
+			m_pStreamBuf->beg = NULL;
+			m_pStreamBuf->end = NULL;
+			m_pStreamBuf->p	= NULL;
+			m_pStreamBuf->len = 0;
+			m_pStreamBuf->tellgBase = 0;
 		}
 		delete m_pStreamBuf;
 	}
@@ -128,44 +133,46 @@ size_t H264Analysis::nextNalu(char **naluData)
 	 * 8. 返回naluLen
 	 */
 
-	char c;
+	//char c;
 	int startCodeLen = 0;
 
 	// 1.找到当前startCode，获取文件位置
 	// 2.跳过头部
 	while (true)
 	{
-		if (checkStreamBuf() == Failed)
-			return Failed;
+		if (m_pStreamBuf->p >= m_pStreamBuf->end)
+		{
+			if (checkStreamBuf() == Failed)
+				return Failed;
+		}
 
-		c = m_pStreamBuf->buf[m_pStreamBuf->pos];
-		m_pStreamBuf->pos++;
-
-		if (c == 0x00)
+		if (*m_pStreamBuf->p == 0x00)
 		{
 			startCodeLen++;
 		}
-		else if (c == 0x01 && (startCodeLen == 2 || startCodeLen == 3))
+		else if (*m_pStreamBuf->p == 0x01 && (startCodeLen == 2 || startCodeLen == 3))
 		{
 			startCodeLen++;
+			m_pStreamBuf->p++;
 			break;
 		}
 		else
 			startCodeLen = 0;
+		m_pStreamBuf->p++;
 	}
-	int naluPos = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - startCodeLen;
+	int naluPos = m_pStreamBuf->tellgBase + m_pStreamBuf->p - m_pStreamBuf->beg - startCodeLen;
 
 	// 3. 找到下个startCode，获取文件位置
 	startCodeLen = 0;
 	while (true)
 	{
-		if (checkStreamBuf() == Failed) ///< 已到文件结尾
-			break;
+		if (m_pStreamBuf->p >= m_pStreamBuf->end)
+		{
+			if (checkStreamBuf() == Failed) ///< 已到文件结尾
+				break;
+		}
 
-		c = m_pStreamBuf->buf[m_pStreamBuf->pos];
-		m_pStreamBuf->pos++;
-
-		if (c == 0x00)
+		if (*m_pStreamBuf->p == 0x00)
 		{
 			startCodeLen++;
 			/**							
@@ -186,23 +193,25 @@ size_t H264Analysis::nextNalu(char **naluData)
 			 *								   ^
 			 *								   | (m_pStreamBuf->pos = 0)
 			 */
-			if (m_pStreamBuf->pos >= m_pStreamBuf->len)	// 缓冲区尾为startCode情况
+			if (m_pStreamBuf->p >= m_pStreamBuf->end)	// 缓冲区尾为startCode情况
 			{
-				m_fileStream.seekg(m_pStreamBuf->tellgBase + m_pStreamBuf->pos - startCodeLen); // 文件指针回退到最后连续的0x00之前
+				m_fileStream.seekg(m_pStreamBuf->tellgBase + m_pStreamBuf->p - m_pStreamBuf->beg - startCodeLen); // 文件指针回退到最后连续的0x00之前
 				startCodeLen = 0;
 				continue;
 			}
 		}
-		else if (c == 0x01 && (startCodeLen == 2 || startCodeLen == 3))
+		else if (*m_pStreamBuf->p == 0x01 && (startCodeLen == 2 || startCodeLen == 3))
 		{
 			startCodeLen++;
+			m_pStreamBuf->p++;
 			break;
 		}
 		else
 			startCodeLen = 0;
+		m_pStreamBuf->p++;
 	}
-	int naluNextPos = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - startCodeLen;
-	m_pStreamBuf->pos -= startCodeLen;	///< 调整指针，指向Nalu开头
+	int naluNextPos = m_pStreamBuf->tellgBase + m_pStreamBuf->p - m_pStreamBuf->beg - startCodeLen;
+	m_pStreamBuf->p -= startCodeLen;	///< 调整指针，指向Nalu开头
 
 	// 4. 获取Nalu长度naluLen(下个startCode位置 - 当前startCode位置)
 	size_t naluLen = naluNextPos - naluPos;
@@ -416,7 +425,7 @@ size_t H264Analysis::next_IDR_Nalu( char **naluData /*= NULL*/ )
 			)
 		{
 			flag = true;
-			flagFilePtrPos = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - naluLen;
+			flagFilePtrPos = m_pStreamBuf->tellgBase + m_pStreamBuf->p - m_pStreamBuf->beg - naluLen;
 		}
 		if (flag)
 			flagCount++;
@@ -443,7 +452,7 @@ size_t H264Analysis::next_IDR_Nalu( char **naluData /*= NULL*/ )
 				{
 					if (flag && flagCount)
 					{
-						naluLen = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - flagFilePtrPos;	///< 要拷贝的长度
+						naluLen = m_pStreamBuf->tellgBase + m_pStreamBuf->p - m_pStreamBuf->beg - flagFilePtrPos;	///< 要拷贝的长度
 						int filePtrPos = m_fileStream.tellg();
 						m_fileStream.seekg(flagFilePtrPos);
 						*naluData = new char[naluLen];
@@ -462,7 +471,7 @@ size_t H264Analysis::next_IDR_Nalu( char **naluData /*= NULL*/ )
 				{
 					if (flag && flagCount)
 					{
-						naluLen = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - flagFilePtrPos;
+						naluLen = m_pStreamBuf->tellgBase + m_pStreamBuf->p - m_pStreamBuf->beg - flagFilePtrPos;
 						flag = false;
 						flagCount = 0;
 					}
@@ -621,7 +630,7 @@ size_t H264Analysis::next_B_Nalu( char **naluData )
 #ifdef TIME_TEST
 	DWORD time_beg = GetTickCount();
 #endif
-			/**
+	/**
 	 * 1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
 	 * 2. 获取下一字节，判断Nalu类型
 	 * 3. 若为要找类型，则判断naluData是否为空:
@@ -710,7 +719,7 @@ size_t H264Analysis::next_SI_Nalu( char **naluData )
 #ifdef TIME_TEST
 	DWORD time_beg = GetTickCount();
 #endif
-			/**
+	/**
 	 * 1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
 	 * 2. 获取下一字节，判断Nalu类型
 	 * 3. 若为要找类型，则判断naluData是否为空:
@@ -799,7 +808,7 @@ size_t H264Analysis::next_SP_Nalu( char **naluData )
 #ifdef TIME_TEST
 	DWORD time_beg = GetTickCount();
 #endif
-			/**
+	/**
 	 * 1. 获取Nalu数据暂存到 char *naluDataTmp中，长度存到naluLen
 	 * 2. 获取下一字节，判断Nalu类型
 	 * 3. 若为要找类型，则判断naluData是否为空:
@@ -901,9 +910,9 @@ inline STATUS H264Analysis::skipTo( short int persent )
 
 	// 找到下一个I帧，并将缓冲区指针定位到该I帧的头部前（若包含SPS,PPS，则指向SPS前）
 	size_t len = next_I_Nalu();
-	if (m_pStreamBuf->pos < len)
+	if (m_pStreamBuf->p - m_pStreamBuf->beg < len)
 		throw std::exception();
-	m_pStreamBuf->pos -= len;
+	m_pStreamBuf->p -= len;
 	
 #ifdef TIME_TEST
 	DWORD time_diff = GetTickCount() - time_beg;
@@ -1147,6 +1156,14 @@ STATUS H264Analysis::ueDecode(char *egcData, size_t len, UINT32 *codeNum, unsign
 	return Success;
 }
 
+//************************************
+// 函数名:	H264Analysis::get_NALU_count
+// 描述:	获取NALU总数
+// 返回值:	size_t
+// 日期: 	2016/06/15
+// 作者: 	YJZ
+// 修改记录:
+//************************************
 size_t H264Analysis::get_NALU_count()
 {
 	size_t naluCount = 0;
@@ -1154,15 +1171,16 @@ size_t H264Analysis::get_NALU_count()
 	m_fileStream.seekg(0);
 	size_t i = 0;
 	size_t startCodeLen = 0;
+	clearStreamBuf();
 	char *p = NULL;
 	while (true)
 	{
-		if (p >= m_pStreamBuf->buf+m_pStreamBuf->len)
+		if (p >= m_pStreamBuf->end)
 		{
 			if (checkStreamBuf() == Failed)
 				break;
-			p = m_pStreamBuf->buf;
-			m_pStreamBuf->pos = m_pStreamBuf->len;
+			p = m_pStreamBuf->beg;
+			m_pStreamBuf->p = m_pStreamBuf->end;
 		}
 
 		if (*p == 0x00)
@@ -1176,6 +1194,26 @@ size_t H264Analysis::get_NALU_count()
 			startCodeLen = 0;
 		p++;
 	}
+	
+// 	while (true)
+// 	{
+// 		if (m_pStreamBuf->p >= m_pStreamBuf->end)
+// 		{
+// 			if (checkStreamBuf() == Failed)
+// 				break;
+// 		}
+// 
+// 		if (*m_pStreamBuf->p == 0x00)
+// 			startCodeLen++;
+// 		else if (*m_pStreamBuf->p == 0x01 && (startCodeLen == 2 || startCodeLen == 3))
+// 		{
+// 			startCodeLen = 0;
+// 			naluCount++;
+// 		}
+// 		else
+// 			startCodeLen = 0;
+// 		m_pStreamBuf->p++;
+// 	}
 	clearStreamBuf();
 	m_fileStream.seekg(filePtrPos);	// 还原文件指针位置
 	return naluCount;
@@ -1238,7 +1276,7 @@ size_t H264Analysis::nextInalu( char **naluData /*= NULL*/ )
 			)
 		{
 			flag = true;
-			flagFilePtrPos = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - naluLen;
+			flagFilePtrPos = m_pStreamBuf->tellgBase + m_pStreamBuf->p - m_pStreamBuf->beg - naluLen;
 		}
 		if (flag)
 			flagCount++;
@@ -1265,7 +1303,7 @@ size_t H264Analysis::nextInalu( char **naluData /*= NULL*/ )
 				{
 					if (flag && flagCount)
 					{
-						naluLen = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - flagFilePtrPos;	///< 要拷贝的长度
+						naluLen = m_pStreamBuf->tellgBase + m_pStreamBuf->p - m_pStreamBuf->beg - flagFilePtrPos;	///< 要拷贝的长度
 						int filePtrPos = m_fileStream.tellg();
 						m_fileStream.seekg(flagFilePtrPos);
 						*naluData = new char[naluLen];
@@ -1284,7 +1322,7 @@ size_t H264Analysis::nextInalu( char **naluData /*= NULL*/ )
 				{
 					if (flag && flagCount)
 					{
-						naluLen = m_pStreamBuf->tellgBase + m_pStreamBuf->pos - flagFilePtrPos;
+						naluLen = m_pStreamBuf->tellgBase + m_pStreamBuf->p - m_pStreamBuf->beg - flagFilePtrPos;
 						flag = false;
 						flagCount = 0;
 					}
@@ -1362,7 +1400,7 @@ inline size_t H264Analysis::readNextBytes( char *p, int len)
 //************************************
 inline STATUS H264Analysis::checkStreamBuf()
 {
-	if (m_pStreamBuf->pos >= m_pStreamBuf->len) 
+	if (m_pStreamBuf->p >= m_pStreamBuf->end) 
 	{
 		clearStreamBuf();
 
@@ -1370,9 +1408,10 @@ inline STATUS H264Analysis::checkStreamBuf()
 		if (m_pStreamBuf->tellgBase >= m_fileLen)	///< 是否到达文件结尾
 			return Failed;
 
-		m_pStreamBuf->buf = new char[BUFSIZE];
-		m_pStreamBuf->len = readNextBytes(m_pStreamBuf->buf, BUFSIZE);
-		m_pStreamBuf->pos = 0;
+		m_pStreamBuf->beg = new char[BUFSIZE];
+		m_pStreamBuf->len = readNextBytes(m_pStreamBuf->beg, BUFSIZE);
+		m_pStreamBuf->end = m_pStreamBuf->beg + m_pStreamBuf->len;
+		m_pStreamBuf->p = m_pStreamBuf->beg;
 	}
 	return Success;
 }
@@ -1387,12 +1426,13 @@ inline STATUS H264Analysis::checkStreamBuf()
 //************************************
 inline void H264Analysis::clearStreamBuf()
 {
-	if (m_pStreamBuf->buf)
+	if (m_pStreamBuf->beg)
 	{
-		delete m_pStreamBuf->buf;
-		m_pStreamBuf->buf = NULL;
+		delete m_pStreamBuf->beg;
+		m_pStreamBuf->beg = NULL;
+		m_pStreamBuf->end = NULL;
 		m_pStreamBuf->len = 0;
-		m_pStreamBuf->pos = 0;
+		m_pStreamBuf->p = NULL;
 		m_pStreamBuf->tellgBase = 0;
 	}
 }
