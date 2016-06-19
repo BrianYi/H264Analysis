@@ -71,7 +71,6 @@
   <ItemGroup>
     <ClCompile Include="..\main.cpp" />
     <ClCompile Include="H264Analysis.cpp" />
-    <ClCompile Include="utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="H264Analysis.h" />
