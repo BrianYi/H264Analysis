@@ -52,3 +52,4 @@ ui_*.h
 
 movie
 /H264Analysis/*.user
+H264Analysis.VC.opendb

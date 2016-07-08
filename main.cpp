@@ -1,18 +1,19 @@
 #include "H264Analysis/H264Analysis.h"
+#include <iostream>
 #include <string>
 #include <algorithm>
+#include <iomanip>
+#include <Windows.h>
 using namespace std;
 const string g_fileNameStr = "../movie/500MTest.h264";
 
 void H264AnalysisDebug();	// ²âÊÔº¯Êý
 
-
-//#define ALL_IN_MEM_GET_NALU_COUNT
-
 int main()
 {
-	//H264AnalysisDebug();
+	H264AnalysisDebug();
 
+#if 0	// test time of running when using buffer
 	H264Analysis h264Analysis;
 	ifstream& fileStream = h264Analysis.getOpenFile(g_fileNameStr);
 	char *naluData = NULL;
@@ -22,9 +23,11 @@ int main()
 	naluCount = h264Analysis.get_NALU_count();
 	DWORD timeTotal_diff = GetTickCount() - timeTotal_beg;
 	cout << naluCount << " time: " << timeTotal_diff << endl;
+	cout << "total time: " << naluCount / 25 << " s " << endl;
 	h264Analysis.closeFile();
+#endif
 
-#ifdef ALL_IN_MEM_GET_NALU_COUNT
+#if 0 // test time of running when all data in mem
 	size_t len = 0;
 	ifstream is;
 	is.open(g_fileNameStr.c_str(), std::ios_base::binary);
@@ -76,28 +79,29 @@ int main()
 void H264AnalysisDebug()
 {
 	H264Analysis h264Analysis;
-	ifstream& fileStream = h264Analysis.getOpenFile(g_fileNameStr);
-	int pCount = 0, bCount = 0, iCount = 0, siCount = 0, spCount = 0, spsCount = 0, ppsCount = 0, seiCount = 0, audCount = 0, slicCount = 0, idrCount = 0, auxCount = 0, dpaCount = 0, dpbCount = 0, dpcCount = 0;
-	int pSize = 0, bSize = 0, iSize = 0, siSize = 0, spSize = 0, spsSize = 0, ppsSize = 0, seiSize = 0, audSize = 0, slicSize = 0, idrSize = 0, auxSize = 0, dpaSize = 0, dpbSize = 0, dpcSize = 0;
-	int NaluCount = 0;
-	int NaluSize = 0;
-	int NaluTotalSize = 0;
+	ifstream& fileStream = h264Analysis.GetOpenFile(g_fileNameStr.c_str());
+	UINT32 pCount = 0, bCount = 0, iCount = 0, siCount = 0, spCount = 0, spsCount = 0, ppsCount = 0, seiCount = 0, audCount = 0, slicCount = 0, idrCount = 0, auxCount = 0, dpaCount = 0, dpbCount = 0, dpcCount = 0;
+	UINT32 pSize = 0, bSize = 0, iSize = 0, siSize = 0, spSize = 0, spsSize = 0, ppsSize = 0, seiSize = 0, audSize = 0, slicSize = 0, idrSize = 0, auxSize = 0, dpaSize = 0, dpbSize = 0, dpcSize = 0;
+	UINT32 NaluCount = 0;
+	UINT32 NaluSize = 0;
+	UINT32 NaluTotalSize = 0;
 
 	//h264Analysis.skipTo(99);
 	DWORD timeTotal_beg = GetTickCount();
 
 	char *naluData = NULL;
-	while (NaluSize = h264Analysis.nextNalu(&naluData))
+	while (h264Analysis.NextNalu(&naluData, &NaluSize) == H264Analysis::Success)
 	{
 		NaluCount++;
 		NaluTotalSize += NaluSize;
-		int startCodeLen = h264Analysis.scLen(naluData);
+		UINT32 startCodeLen = 0;
+		if (h264Analysis.GetStartCodeLength(naluData,&startCodeLen) == H264Analysis::Failed)	throw;
 		unsigned char nextByte = naluData[startCodeLen];
-		UINT32 forbidden_zero_bit = B8_VAL_BASE_R(nextByte, 0, 1);
-		UINT32 nal_ref_idc = B8_VAL_BASE_R(nextByte, 1, 2);
-		NalUnitType nal_unit_type = /*B8_VAL_BASE_R(nextByte, 3, 5);*/h264Analysis.getNaluType(naluData);
+		UINT32 forbidden_zero_bit = nextByte>>7;
+		UINT32 nal_ref_idc = (nextByte>>5)&0x3;
+		H264Analysis::NalUnitType nal_unit_type = /*B8_VAL_BASE_R(nextByte, 3, 5);*/h264Analysis.GetNaluType(naluData);
 		UINT32 first_mb_in_slice = 0;
-		SliceType slice_type = /*0;*/h264Analysis.getSliceType(naluData, NaluSize);
+		H264Analysis::SliceType slice_type = /*0;*/h264Analysis.GetSliceType(naluData, NaluSize);
 		UINT32 pic_parameter_set_id = 0;
 		unsigned int egcDataPos = startCodeLen + 1;
 		unsigned int egcDataLen = NaluSize - egcDataPos;
@@ -105,20 +109,20 @@ void H264AnalysisDebug()
 		int len = 0;
 		switch (nal_unit_type)
 		{
-		case NAL_SLICE:
-		case NAL_IDR_SLICE:
-		case NAL_AUXILIARY_SLICE:
-			if (nal_unit_type == NAL_SLICE)
+		case H264Analysis::NAL_SLICE:
+		case H264Analysis::NAL_IDR_SLICE:
+		case H264Analysis::NAL_AUXILIARY_SLICE:
+			if (nal_unit_type == H264Analysis::NAL_SLICE)
 			{
 				slicCount++;
 				slicSize += NaluSize;
 			}
-			else if (nal_unit_type == NAL_IDR_SLICE)
+			else if (nal_unit_type == H264Analysis::NAL_IDR_SLICE)
 			{
 				idrCount++;
 				idrSize += NaluSize;
 			}
-			else if (nal_unit_type == NAL_AUXILIARY_SLICE)
+			else if (nal_unit_type == H264Analysis::NAL_AUXILIARY_SLICE)
 			{
 				auxCount++;
 				auxSize += NaluSize;
@@ -126,28 +130,28 @@ void H264AnalysisDebug()
 
 			switch (slice_type)
 			{
-			case SLICE_TYPE_P1:
-			case SLICE_TYPE_P2:
+			case H264Analysis::SLICE_TYPE_P1:
+			case H264Analysis::SLICE_TYPE_P2:
 				pCount++;
 				pSize += NaluSize;
 				break;
-			case SLICE_TYPE_B1:
-			case SLICE_TYPE_B2:
+			case H264Analysis::SLICE_TYPE_B1:
+			case H264Analysis::SLICE_TYPE_B2:
 				bCount++;
 				bSize += NaluSize;
 				break;
-			case SLICE_TYPE_I1:
-			case SLICE_TYPE_I2:
+			case H264Analysis::SLICE_TYPE_I1:
+			case H264Analysis::SLICE_TYPE_I2:
 				iCount++;
 				iSize += NaluSize;
 				break;
-			case SLICE_TYPE_SP1:
-			case SLICE_TYPE_SP2:
+			case H264Analysis::SLICE_TYPE_SP1:
+			case H264Analysis::SLICE_TYPE_SP2:
 				spCount++;
 				spsSize += NaluSize;
 				break;
-			case SLICE_TYPE_SI1:
-			case SLICE_TYPE_SI2:
+			case H264Analysis::SLICE_TYPE_SI1:
+			case H264Analysis::SLICE_TYPE_SI2:
 				siCount++;
 				siSize += NaluSize;
 				break;
@@ -155,41 +159,41 @@ void H264AnalysisDebug()
 				break;
 			}
 			break;
-		case NAL_DPA:
+		case H264Analysis::NAL_DPA:
 			dpaCount++;
 			dpaSize += NaluSize;
 			break;
-		case NAL_DPB:
+		case H264Analysis::NAL_DPB:
 			dpbCount++;
 			dpbSize += NaluSize;
 			break;
-		case NAL_DPC:
+		case H264Analysis::NAL_DPC:
 			dpcCount++;
 			dpcSize += NaluSize;
 			break;
-		case NAL_SEI:
+		case H264Analysis::NAL_SEI:
 			seiCount++;
 			seiSize += NaluSize;
 			break;
-		case NAL_SPS:
+		case H264Analysis::NAL_SPS:
 			spsCount++;
 			spsSize += NaluSize;
 			break;
-		case NAL_PPS:
+		case H264Analysis::NAL_PPS:
 			ppsCount++;
 			ppsSize += NaluSize;
 			break;
-		case NAL_AUD:
+		case H264Analysis::NAL_AUD:
 			audCount++;
 			audSize += NaluSize;
 			break;
-		case NAL_END_SEQUENCE:
+		case H264Analysis::NAL_END_SEQUENCE:
 			break;
-		case NAL_END_STREAM:
+		case H264Analysis::NAL_END_STREAM:
 			break;
-		case NAL_FILLER_DATA:
+		case H264Analysis::NAL_FILLER_DATA:
 			break;
-		case NAL_SPS_EXT:
+		case H264Analysis::NAL_SPS_EXT:
 			break;
 		default:
 			break;
@@ -239,7 +243,7 @@ void H264AnalysisDebug()
 	h264Analysis.m_lastByte = 0;
 	DWORD time_beg = GetTickCount();
 	timeTotal_beg = time_beg;
-	while (NaluSize = h264Analysis.nextNalu())
+	while (h264Analysis.NextNalu(NULL, &NaluSize) == H264Analysis::Success)
 	{
 		NaluTotalSize += NaluSize;
 		NaluCount++;
@@ -251,7 +255,7 @@ void H264AnalysisDebug()
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
-	while (NaluSize = h264Analysis.next_P_Nalu())
+	while (h264Analysis.NextPnalu(NULL,&NaluSize) == H264Analysis::Success)
 	{
 		pSize += NaluSize;
 		pCount++;
@@ -263,7 +267,7 @@ void H264AnalysisDebug()
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
-	while (NaluSize = h264Analysis.next_B_Nalu())
+	while (h264Analysis.NextBnalu(NULL,&NaluSize) == H264Analysis::Success)
 	{
 		bSize += NaluSize;
 		bCount++;
@@ -275,7 +279,7 @@ void H264AnalysisDebug()
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
-	while (NaluSize = h264Analysis.next_I_Nalu())
+	while (h264Analysis.NextInalu(NULL,&NaluSize) == H264Analysis::Success)
 	{
 		iSize += NaluSize;
 		iCount++;
@@ -287,7 +291,7 @@ void H264AnalysisDebug()
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
-	while (NaluSize = h264Analysis.next_SI_Nalu())
+	while (h264Analysis.NextSiNalu(NULL,&NaluSize) == H264Analysis::Success)
 	{
 		siSize += NaluSize;
 		siCount++;
@@ -299,7 +303,7 @@ void H264AnalysisDebug()
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
-	while (NaluSize = h264Analysis.next_SP_Nalu())
+	while (h264Analysis.NextSpNalu(NULL,&NaluSize) == H264Analysis::Success)
 	{
 		spSize += NaluSize;
 		spCount++;
@@ -311,7 +315,7 @@ void H264AnalysisDebug()
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
-	while (NaluSize = h264Analysis.next_SPS_Nalu())
+	while (h264Analysis.NextSpsNalu(NULL,&NaluSize) == H264Analysis::Success)
 	{
 		spsSize += NaluSize;
 		spsCount++;
@@ -323,7 +327,7 @@ void H264AnalysisDebug()
 	h264Analysis.m_binPos = 0;
 	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
-	while (NaluSize = h264Analysis.next_PPS_Nalu())
+	while (h264Analysis.NextPpsNalu(NULL,&NaluSize) == H264Analysis::Success)
 	{
 		ppsSize += NaluSize;
 		ppsCount++;
@@ -335,6 +339,6 @@ void H264AnalysisDebug()
 // 	cout << setw(10) << "SEI" << setw(10) << seiCount << setw(10) << (float)seiSize/1024/1024 << endl;
 // 	cout << setw(10) << "AUD" << setw(10) << audCount << setw(10) << (float)audSize/1024/1024 << endl;
 	cout << "------------------------------------------" << endl;
-	h264Analysis.closeFile();
+	h264Analysis.CloseFile();
 	
 }

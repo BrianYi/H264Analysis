@@ -1,11 +1,4 @@
-/**
- * 位串处理
- */
-#include <iostream>
-#include <iomanip>
-#include <bitset>
 #include <Windows.h>
-
 //
 // 字节位颠倒(如: 0011 0001 => 1000 1100)
 // 
@@ -50,37 +43,37 @@ int bits_get_byte_num(int len)
 //
 // 将c以二进制形式输出, 格式为从右到左(最低位到最高位)
 //
-void bits_binary_printf(char c)
-{
-	std::bitset<8> tmp((int)c);
-	std::cout << tmp;
-}
+// void bits_binary_printf(char c)
+// {
+// 	std::bitset<8> tmp((int)c);
+// 	std::cout << tmp;
+// }
 
 //
 // 将data以二进制形式输出, 格式为从右到左(最低位到最高位)
 //
-void bits_binary_printf(char *data, int len)
-{
-	for (int i = len-1; i >= 0; i--)
-	{
-		bits_binary_printf(data[i]);
-		std::cout << " ";
-	}
-}
+// void bits_binary_printf(char *data, int len)
+// {
+// 	for (int i = len-1; i >= 0; i--)
+// 	{
+// 		bits_binary_printf(data[i]);
+// 		std::cout << " ";
+// 	}
+// }
 
 //
 // 将data以十六进制形式输出, 小端存储的方式
 //
-void bytes_hex_printf(char *data, int len)
-{
-	for (int i = 0; i < len; i++)
-	{
-		if (!(i % 16) && i)
-			std::cout << std::endl;
-		std::cout << std::hex << std::setw(2) << std::setfill('0') << ((int)data[i] & 0xff) << " ";
-	}
-	std::cout << std::endl;
-}
+// void bytes_hex_printf(char *data, int len)
+// {
+// 	for (int i = 0; i < len; i++)
+// 	{
+// 		if (!(i % 16) && i)
+// 			std::cout << std::endl;
+// 		std::cout << std::hex << std::setw(2) << std::setfill('0') << ((int)data[i] & 0xff) << " ";
+// 	}
+// 	std::cout << std::endl;
+// }
 
 //
 // 获取截取字节第pos位起, 长度为len位的字节掩码
@@ -89,7 +82,7 @@ const char B8_VAL_MASK(unsigned int pos, unsigned int len)
 { 
 	if (pos+len > 8)
 	{
-		throw std::exception();
+		throw ;
 		return 0;
 	}
 	return ((0xff >> (8-len))<<(8-pos-len)); 
@@ -102,7 +95,7 @@ const UINT32 B32_VAL_MASK(unsigned int pos, unsigned int len)
 {
 	if (pos+len > 32)
 	{
-		throw std::exception();
+		throw ;
 		return 0;
 	}
 	return ((0xffffffff >> (32-len))<<(32-pos-len));
@@ -116,7 +109,7 @@ const char B8_VAL_MASK(unsigned int pos)
 { 
 	if (pos >= 8)
 	{
-		throw std::exception();
+		throw ;
 		return 0;
 	}
 	return (0xff >> pos); 
@@ -129,7 +122,7 @@ const UINT32 B32_VAL_MASK(unsigned int pos)
 { 
 	if (pos >= 32)
 	{
-		throw std::exception();
+		throw ;
 		return 0;
 	}
 	return (0xffffffff >> pos); 
