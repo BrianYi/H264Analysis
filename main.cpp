@@ -79,7 +79,8 @@ int main()
 void H264AnalysisDebug()
 {
 	H264Analysis h264Analysis;
-	ifstream& fileStream = h264Analysis.GetOpenFile(g_fileNameStr.c_str());
+	if (h264Analysis.GetOpenFile(g_fileNameStr.c_str()) == NULL)
+		cout << "Cannot open file " + g_fileNameStr + " !" << endl;
 	UINT32 pCount = 0, bCount = 0, iCount = 0, siCount = 0, spCount = 0, spsCount = 0, ppsCount = 0, seiCount = 0, audCount = 0, slicCount = 0, idrCount = 0, auxCount = 0, dpaCount = 0, dpbCount = 0, dpcCount = 0;
 	UINT32 pSize = 0, bSize = 0, iSize = 0, siSize = 0, spSize = 0, spsSize = 0, ppsSize = 0, seiSize = 0, audSize = 0, slicSize = 0, idrSize = 0, auxSize = 0, dpaSize = 0, dpbSize = 0, dpcSize = 0;
 	UINT32 NaluCount = 0;
@@ -225,7 +226,7 @@ void H264AnalysisDebug()
 	cout << setw(10) << "DPC" << setw(10) << dpcCount << setw(10) << (float)dpcSize/1024/1024 << endl;
 	cout << "总耗时: " << timeTotal_diff << " ms" << endl;
 	cout << "------------------------------" << endl;
-
+	h264Analysis.CloseFile();
 	
 	pCount = 0, bCount = 0, iCount = 0, siCount = 0, spCount = 0, spsCount = 0, ppsCount = 0, seiCount = 0, audCount = 0, slicCount = 0, idrCount = 0, auxCount = 0, dpaCount = 0, dpbCount = 0, dpcCount = 0;;
 	pSize = 0, bSize = 0, iSize = 0, siSize = 0, spSize = 0, spsSize = 0, ppsSize = 0, seiSize = 0, audSize = 0, slicSize = 0, idrSize = 0, auxSize = 0, dpaSize = 0, dpbSize = 0, dpcSize = 0;;
@@ -238,107 +239,105 @@ void H264AnalysisDebug()
 	cout << setw(10) << "Category" << setw(10) << "Number" << setw(12) << "Size(MB)" << setw(10) << "Time(ms)" << endl;
 	cout << "------------------------------------------" << endl;
 
-	fileStream.seekg(ios::beg);
-	h264Analysis.m_binPos = 0;
-	h264Analysis.m_lastByte = 0;
 	DWORD time_beg = GetTickCount();
 	timeTotal_beg = time_beg;
+	if (h264Analysis.GetOpenFile(g_fileNameStr.c_str()) == NULL)
+		cout << "Cannot open file " + g_fileNameStr + " !" << endl;
 	while (h264Analysis.NextNalu(NULL, &NaluSize) == H264Analysis::Success)
 	{
 		NaluTotalSize += NaluSize;
 		NaluCount++;
 	}
+	h264Analysis.CloseFile();
 	DWORD time_diff = GetTickCount() - time_beg;
 	cout << setw(10) << "NALU" << setw(10) << NaluCount << setw(12) << (float)NaluTotalSize/1024/1024 << setw(10) << time_diff << endl;
 	
-	fileStream.seekg(ios::beg);
-	h264Analysis.m_binPos = 0;
-	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
+	if (h264Analysis.GetOpenFile(g_fileNameStr.c_str()) == NULL)
+		cout << "Cannot open file " + g_fileNameStr + " !" << endl;
 	while (h264Analysis.NextPnalu(NULL,&NaluSize) == H264Analysis::Success)
 	{
 		pSize += NaluSize;
 		pCount++;
 	}
+	h264Analysis.CloseFile();
 	time_diff = GetTickCount() - time_beg;
 	cout << setw(10) << "P" << setw(10) << pCount << setw(12) << (float)pSize/1024/1024 << setw(10) << time_diff << endl;
 	
-	fileStream.seekg(ios::beg);
-	h264Analysis.m_binPos = 0;
-	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
+	if (h264Analysis.GetOpenFile(g_fileNameStr.c_str()) == NULL)
+		cout << "Cannot open file " + g_fileNameStr + " !" << endl;
 	while (h264Analysis.NextBnalu(NULL,&NaluSize) == H264Analysis::Success)
 	{
 		bSize += NaluSize;
 		bCount++;
 	}
+	h264Analysis.CloseFile();
 	time_diff = GetTickCount() - time_beg;
 	cout << setw(10) << "B" << setw(10) << bCount << setw(12) << (float)bSize/1024/1024 << setw(10) << time_diff << endl;
 	
-	fileStream.seekg(ios::beg);
-	h264Analysis.m_binPos = 0;
-	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
+	if (h264Analysis.GetOpenFile(g_fileNameStr.c_str()) == NULL)
+		cout << "Cannot open file " + g_fileNameStr + " !" << endl;
 	while (h264Analysis.NextInalu(NULL,&NaluSize) == H264Analysis::Success)
 	{
 		iSize += NaluSize;
 		iCount++;
 	}
+	h264Analysis.CloseFile();
 	time_diff = GetTickCount() - time_beg;
 	cout << setw(10) << "I" << setw(10) << iCount << setw(12) << (float)iSize/1024/1024 << setw(10) << time_diff << endl;
 	
-	fileStream.seekg(ios::beg);
-	h264Analysis.m_binPos = 0;
-	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
+	if (h264Analysis.GetOpenFile(g_fileNameStr.c_str()) == NULL)
+		cout << "Cannot open file " + g_fileNameStr + " !" << endl;
 	while (h264Analysis.NextSiNalu(NULL,&NaluSize) == H264Analysis::Success)
 	{
 		siSize += NaluSize;
 		siCount++;
 	}
+	h264Analysis.CloseFile();
 	time_diff = GetTickCount() - time_beg;
 	cout << setw(10) << "SI" << setw(10) << siCount << setw(12) << (float)siSize/1024/1024 << setw(10) << time_diff << endl;
 	
-	fileStream.seekg(ios::beg);
-	h264Analysis.m_binPos = 0;
-	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
+	if (h264Analysis.GetOpenFile(g_fileNameStr.c_str()) == NULL)
+		cout << "Cannot open file " + g_fileNameStr + " !" << endl;
 	while (h264Analysis.NextSpNalu(NULL,&NaluSize) == H264Analysis::Success)
 	{
 		spSize += NaluSize;
 		spCount++;
 	}
+	h264Analysis.CloseFile();
 	time_diff = GetTickCount() - time_beg;
 	cout << setw(10) << "SP" << setw(10) << spCount << setw(12) << (float)spSize/1024/1024 << setw(10) << time_diff << endl;
 	
-	fileStream.seekg(ios::beg);	
-	h264Analysis.m_binPos = 0;
-	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
+	if (h264Analysis.GetOpenFile(g_fileNameStr.c_str()) == NULL)
+		cout << "Cannot open file " + g_fileNameStr + " !" << endl;
 	while (h264Analysis.NextSpsNalu(NULL,&NaluSize) == H264Analysis::Success)
 	{
 		spsSize += NaluSize;
 		spsCount++;
 	}
+	h264Analysis.CloseFile();
 	time_diff = GetTickCount() - time_beg;
 	cout << setw(10) << "SPS" << setw(10) << spsCount << setw(12) << (float)spsSize/1024/1024 << setw(10) << time_diff << endl;
 	
-	fileStream.seekg(ios::beg);	
-	h264Analysis.m_binPos = 0;
-	h264Analysis.m_lastByte = 0;
 	time_beg = GetTickCount();
+	if (h264Analysis.GetOpenFile(g_fileNameStr.c_str()) == NULL)
+		cout << "Cannot open file " + g_fileNameStr + " !" << endl;
 	while (h264Analysis.NextPpsNalu(NULL,&NaluSize) == H264Analysis::Success)
 	{
 		ppsSize += NaluSize;
 		ppsCount++;
 	}
+	h264Analysis.CloseFile();
 	time_diff = GetTickCount() - time_beg;
 	timeTotal_diff = GetTickCount() - timeTotal_beg;
 	cout << setw(10) << "PPS" << setw(10) << ppsCount << setw(12) << (float)ppsSize/1024/1024 << setw(10) << time_diff << endl;
 	cout << "总耗时: " << timeTotal_diff << " ms" << endl;
 // 	cout << setw(10) << "SEI" << setw(10) << seiCount << setw(10) << (float)seiSize/1024/1024 << endl;
 // 	cout << setw(10) << "AUD" << setw(10) << audCount << setw(10) << (float)audSize/1024/1024 << endl;
-	cout << "------------------------------------------" << endl;
-	h264Analysis.CloseFile();
-	
+	cout << "------------------------------------------" << endl;	
 }

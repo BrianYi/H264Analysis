@@ -52,9 +52,19 @@ public:
 		SLICE_TYPE_NONE =	10
 	};
 
-	enum { Success = 1, Failed = 0 };
+	enum StatusCode	// 返回状态 ( 0 => Failed, 1 => Success)
+	{ 
+		Failed,
+		Success
+	};
 
-	typedef int STATUS;	// 返回状态 ( 0 => Failed, 1 => Success)
+	enum StreamBufBase	// 缓冲区位置相对偏移类型
+	{
+		beg,	///< 相对于缓冲区起始位置偏移
+		cur,	///< 相对于缓冲区指针当前位置偏移
+		end		///< 相对于缓冲区末尾位置偏移
+	};
+
 	static const UINT32 BUFSIZE = 10 * 1024 * 1024;	// 一次读取的字节数
 
 	//
@@ -85,47 +95,47 @@ public:
 
 
 	// 描述:	获取下一个Nalu, 并将数据放入参数outNaluData传出，完成后缓冲区指针(m_pStreamBuf->p)指向下一个Nalu的开头
-	// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
+	// 返回值:	StatusCode 状态值( Failed => 0, Success => 1 )
 	// 参数:	char *outNaluData	
 	//			1. Not NULL => 返回Nalu, 包含startCode
 	//			2. NULL		=> 不获取数据
 	// 参数:	UINT32 *outLength
 	//			1. Not NULL => 传出Nalu的长度
 	//			2. NULL		=> 不获取数据
-	STATUS NextNalu(char **outNaluData, UINT32 *outLength);
+	StatusCode NextNalu(char **outNaluData, UINT32 *outLength);
 
 	// 描述:	获取下一个包含SPS的Nalu, 并将数据放入参数outNaluData传出，完成后缓冲区指针(m_pStreamBuf->p)指向下一个Nalu的开头
-	// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
+	// 返回值:	StatusCode 状态值( Failed => 0, Success => 1 )
 	// 参数:	char *outNaluData	
 	//			1. Not NULL => 返回Nalu, 包含startCode
 	//			2. NULL		=> 不获取数据
 	// 参数:	UINT32 *outLength
 	//			1. Not NULL => 传出Nalu的长度
 	//			2. NULL		=> 不获取数据
-	STATUS NextSpsNalu(char **outNaluData, UINT32 *outLength);
+	StatusCode NextSpsNalu(char **outNaluData, UINT32 *outLength);
 
 	// 描述:	获取下一个包含PPS的Nalu, 并将数据放入参数outNaluData传出，完成后缓冲区指针(m_pStreamBuf->p)指向下一个Nalu的开头
-	// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
+	// 返回值:	StatusCode 状态值( Failed => 0, Success => 1 )
 	// 参数:	char *outNaluData	
 	//			1. Not NULL => 返回Nalu, 包含startCode
 	//			2. NULL		=> 不获取数据
 	// 参数:	UINT32 *outLength
 	//			1. Not NULL => 传出Nalu的长度
 	//			2. NULL		=> 不获取数据
-	STATUS NextPpsNalu(char **outNaluData, UINT32 *outLength);
+	StatusCode NextPpsNalu(char **outNaluData, UINT32 *outLength);
 
 	// 描述:	获取下一个包含IDR帧的Nalu, 并将数据放入参数outNaluData传出，完成后缓冲区指针(m_pStreamBuf->p)指向下一个Nalu的开头
-	// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
+	// 返回值:	StatusCode 状态值( Failed => 0, Success => 1 )
 	// 参数:	char *outNaluData	
 	//			1. Not NULL => 返回Nalu, 包含startCode
 	//			2. NULL		=> 不获取数据
 	// 参数:	UINT32 *outLength
 	//			1. Not NULL => 传出Nalu的长度
 	//			2. NULL		=> 不获取数据
-	STATUS NextIdrNalu(char **outNaluData, UINT32 *outLength);
+	StatusCode NextIdrNalu(char **outNaluData, UINT32 *outLength);
 
 	// 描述:	描述:	获取下一个包含I帧的Nalu(若前面有SPS,PPS或SEI则会将他们与I帧一起打包), 并将数据放入参数outNaluData传出，完成后缓冲区指针(m_pStreamBuf->p)指向下一个Nalu的开头
-	// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
+	// 返回值:	StatusCode 状态值( Failed => 0, Success => 1 )
 	// 参数:	char *outNaluData	
 	//			1. Not NULL => 返回Nalu, 包含startCode
 	//			2. NULL		=> 不获取数据
@@ -133,30 +143,30 @@ public:
 	//			1. Not NULL => 传出Nalu的长度
 	//			2. NULL		=> 不获取数据
 	// 参数: 	UINT16 inSpeed(in: 默认为1，代表正常速度找下一个I帧，inSpeed为2时代表每2个I帧只播第一个I帧，后面依次类推)
-	STATUS NextInalu(char **outNaluData, UINT32 *outLength, UINT16 inSpeed = 1);
+	StatusCode NextInalu(char **outNaluData, UINT32 *outLength, UINT16 inSpeed = 1);
 
 	// 描述:	获取下一个包含P帧的Nalu, 并将数据放入参数outNaluData传出，完成后缓冲区指针(m_pStreamBuf->p)指向下一个Nalu的开头
-	// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
+	// 返回值:	StatusCode 状态值( Failed => 0, Success => 1 )
 	// 参数:	char *outNaluData	
 	//			1. Not NULL => 返回Nalu, 包含startCode
 	//			2. NULL		=> 不获取数据
 	// 参数:	UINT32 *outLength
 	//			1. Not NULL => 传出Nalu的长度
 	//			2. NULL		=> 不获取数据
-	STATUS NextPnalu( char **outNaluData, UINT32 *outLength );
+	StatusCode NextPnalu( char **outNaluData, UINT32 *outLength );
 
 	// 描述:	获取下一个包含B帧的Nalu, 并将数据放入参数outNaluData传出，完成后缓冲区指针(m_pStreamBuf->p)指向下一个Nalu的开头
-	// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
+	// 返回值:	StatusCode 状态值( Failed => 0, Success => 1 )
 	// 参数:	char *outNaluData	
 	//			1. Not NULL => 返回Nalu, 包含startCode
 	//			2. NULL		=> 不获取数据
 	// 参数:	UINT32 *outLength
 	//			1. Not NULL => 传出Nalu的长度
 	//			2. NULL		=> 不获取数据
-	STATUS NextBnalu(char **outNaluData, UINT32 *outLength);
+	StatusCode NextBnalu(char **outNaluData, UINT32 *outLength);
 
 	// 描述:	获取下一个包含SI帧的Nalu, 并将数据放入参数outNaluData传出，完成后缓冲区指针(m_pStreamBuf->p)指向下一个Nalu的开头
-	// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
+	// 返回值:	StatusCode 状态值( Failed => 0, Success => 1 )
 	// 参数:	char *outNaluData	
 	//			1. Not NULL => 返回Nalu, 包含startCode
 	//			2. NULL		=> 不获取数据
@@ -164,22 +174,22 @@ public:
 	//			1. Not NULL => 传出Nalu的长度
 	//			2. NULL		=> 不获取数据
 
-	STATUS NextSiNalu(char **outNaluData, UINT32 *outLength);
+	StatusCode NextSiNalu(char **outNaluData, UINT32 *outLength);
 
 	// 描述:	获取下一个包含SP帧的Nalu, 并将数据放入参数outNaluData传出，完成后缓冲区指针(m_pStreamBuf->p)指向下一个Nalu的开头
-	// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
+	// 返回值:	StatusCode 状态值( Failed => 0, Success => 1 )
 	// 参数:	char *outNaluData	
 	//			1. Not NULL => 返回Nalu, 包含startCode
 	//			2. NULL		=> 不获取数据
 	// 参数:	UINT32 *outLength
 	//			1. Not NULL => 传出Nalu的长度
 	//			2. NULL		=> 不获取数据
-	STATUS NextSpNalu(char **outNaluData, UINT32 *outLength);	
+	StatusCode NextSpNalu(char **outNaluData, UINT32 *outLength);	
 
 	// 描述:	跳转到指定位置(百分比表示0.0~1.0)
-	// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
+	// 返回值:	StatusCode 状态值( Failed => 0, Success => 1 )
 	// 参数: 	float inPersent(in: 0.0~1.0, 传入要跳转的百分比)
-	STATUS SeekDstToPos(float inPersent);
+	StatusCode SeekDstToPos(float inPersent);
 
 	// 描述:	获取Nalu的类型
 	// 返回值:	NalUnitType => Nalu类型
@@ -196,15 +206,15 @@ public:
 	// 返回值:	size_t => startCode长度
 	// 参数: 	char * inNaluData
 	// 参数: 	UINT32 outLength(out: 传出Nalu长度)
-	STATUS GetStartCodeLength(char *inNaluData, UINT32 *outLength);
+	StatusCode GetStartCodeLength(char *inNaluData, UINT32 *outLength);
 
 	// 描述:	解码Exp-Golomb-Code(指数哥伦布编码)
-	// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
+	// 返回值:	StatusCode 状态值( Failed => 0, Success => 1 )
 	// 参数:	char *inUeExpGolombCodeData(in: 传入要解码的Exp-Golomb-Code数据)
 	// 参数: 	UINT32 inLength(in: 传入Exp-Golomb-Code数据的长度)
 	// 参数: 	UINT32 * outResult(out: 传出解码后的值)
 	// 参数:	UINT32 * outResultLength(out: 传出解码用的字节数)
-	STATUS ParseUeExpGolombCode(char *inUeExpGolombCodeData, UINT32 inLength, UINT32 *outResult, UINT32 *outResultLength);		///< 解码无符号整型指数哥伦布编码
+	StatusCode ParseUeExpGolombCode(char *inUeExpGolombCodeData, UINT32 inLength, UINT32 *outResult, UINT32 *outResultLength);		///< 解码无符号整型指数哥伦布编码
 
 	// 描述:	获取数据缓冲区
 	// 返回值:	PDataSteam
@@ -223,30 +233,43 @@ public:
 	float GetFileFrameTotalTime() { return m_frameTotalTime; }
 
 	// 描述:	检查缓冲区的数据是否还够，若不够则再次读取BUFSIZE字节的文件内容
-	// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
-	inline STATUS CheckStreamBuf();
+	// 返回值:	StatusCode 状态值( Failed => 0, Success => 1 )
+	inline StatusCode CheckStreamBuf();
 
 	// 描述:	清空缓冲区
 	// 返回值:	void
 	inline void ClearStreamBuf();
+
+	// 函数名:	ITH264Analysis::SeekStreamBufPtrPos
+	// 描述:		将缓冲区指针移动到指定位置
+	// 返回值:	ITH264Analysis::StatusCode
+	// 参数: 	UINT32 inNewPos (in:传入新的位置，相对起始位置)
+	StatusCode SeekStreamBufPtrPos(UINT32 inNewPos);
+
+	// 函数名:	ITH264Analysis::SeekStreamBufPtrPos
+	// 描述:		将缓冲区指针移动到指定位置
+	// 返回值:	ITH264Analysis::StatusCode
+	// 参数: 	INT32 inOffset (in:相对偏移量)
+	// 参数: 	StreamBufBase inWay (in:相对偏移类型)
+	StatusCode SeekStreamBufPtrPos(INT32 inOffset, StreamBufBase inWay);
 public: // 当测试完毕后，需改为protected
 	// 描述:	获取下一个包含I帧的Nalu(若前面有SPS,PPS或SEI则会将他们与I帧一起打包), 并将数据放入参数outNaluData传出，完成后缓冲区指针(m_pStreamBuf->p)指向下一个Nalu的开头
-	// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
+	// 返回值:	StatusCode 状态值( Failed => 0, Success => 1 )
 	// 参数:	char *outNaluData	
 	//			1. Not NULL => 返回Nalu, 包含startCode
 	//			2. NULL		=> 不获取数据
 	// 参数:	UINT32 *outLength
 	//			1. Not NULL => 传出Nalu的长度
 	//			2. NULL		=> 不获取数据
-	STATUS Next_I_Nalu(char **outNaluData, UINT32 *outLength);
+	StatusCode Next_I_Nalu(char **outNaluData, UINT32 *outLength);
 
 	// 描述:	读取接下来的ioReadLength个字节，若成功读取的字节数(*outLengthRead)不足(*inBufferLength)个，则会返回Failed，其他情况返回Success
-	// 返回值:	STATUS 状态值( Failed => 0, Success => 1 )
+	// 返回值:	StatusCode 状态值( Failed => 0, Success => 1 )
 	// 参数: 	char * outBuffer(out: 传出读取的字节数据，需要调用者分配和释放内存)
 	// 参数: 	UINT32 *inBufferLength(in: 传入要读取数据的字节长度)
 	// 参数: 	UINT32 *outLengthRead(out: 返回成功读取数据的字节长度)
 	// 注意:	一般情况下，*inBufferLength == *outLengthRead，只有在快读到文件结尾时，两者的值才会不同 *inBufferLength > *outLengthRead
-	inline STATUS Read( char *outBuffer, UINT32 *inBufferLength, UINT32 *outLengthRead);///< 读取len个字节
+	inline StatusCode Read( char *outBuffer, UINT32 *inBufferLength, UINT32 *outLengthRead);///< 读取len个字节
 
 	// 描述:	获取NALU总数
 	// 返回值:	UINT32
